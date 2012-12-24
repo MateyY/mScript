@@ -1,4 +1,4 @@
-/*! mSelect v.1.0
+/*! mSelect v.1.1
  * The mScript CSS Selector Engine
  * By Matey Yanakiev
  * Released under MIT License
