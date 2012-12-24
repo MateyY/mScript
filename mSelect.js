@@ -93,8 +93,7 @@
 			colspan: "colSpan",
 			usemap: "useMap",
 			frameborder: "frameBorder",
-			contenteditable: "contentEditable",
-			style: "$cssText$"
+			contenteditable: "contentEditable"
 		},
 		forAndClass = {
 			"for": "htmlFor",
