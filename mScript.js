@@ -1463,10 +1463,10 @@
 				return this;
 			},
 			once: function(event,callback,after) { //Add an event that automatically removes itself after being executed
-				function handler() { //Create a seperate function to escape use of ECMAScript 5 strict mode, arguments.callee
+				function handler(obj) { //Create a seperate function to escape use of ECMAScript 5 strict mode, arguments.callee
 					mScript(this).end(event,handler); //Remove the event
 					//"Set" value of this
-					return callback.call(this); //Enable "return false" trick
+					return callback.call(this,obj); //Enable "return false" trick
 				}
 				return this.on(event,handler,after); //Add event
 			},
