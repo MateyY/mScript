@@ -2470,7 +2470,7 @@
 	$wrap.prototype = mScript.core;
 	$document = mScript(document); //Reference to $(document)
 	$e = mScript.events(); //Reference to an mScript.events instance
-	/*! mSelect v.1.0
+	/*! mSelect v.1.1
 	 * The mScript CSS Selector Engine
 	 * By Matey Yanakiev
 	 * Released under MIT License
@@ -2528,7 +2528,9 @@
 				return [];
 			},
 			indexOfContext = mutationSupport ? function(context) {
-				for (var i = 0; i < _cache.length; i++) {
+				var i = 0,
+					len = _cache.length;
+				for (; i < len; i++) {
 					if (_cache[i] && _cache[i].context === context) return i;
 				}
 				return -1;
@@ -2563,8 +2565,7 @@
 				colspan: "colSpan",
 				usemap: "useMap",
 				frameborder: "frameBorder",
-				contenteditable: "contentEditable",
-				style: "$cssText$"
+				contenteditable: "contentEditable"
 			},
 			forAndClass = {
 				"for": "htmlFor",
@@ -2700,8 +2701,9 @@
 			} : function(context) {
 				var all = context.getElementsByTagName("*"),
 					i = 0,
+					len = all.length,
 					results = [];
-				for (; i < all.length; i++) {
+				for (; i < len; i++) {
 					if (all[i].nodeType === 1) results.push(all[i]);
 				}
 				return results;
@@ -2788,10 +2790,11 @@
 			toEscapeTab = /\t/g,
 			toEscapeNBSP = /\x20/g,
 			escapeAttrs = function(str) { //Escape spaces, commas, and sibling/children selectors in attrs
-				var match,
+				var match,len,
 					i = 0;
 				if ((match = str.match(attrNeedEscape))) {
-					for (; i < match.length; i++) {
+					len = match.length;
+					for (; i < len; i++) {
 						//Space goes last, because \s may match other space characters
 						str = str.replace(match[i],match[i].replace(commas,"^$c$^").replace(toEscapeGt,"^$gt$^").replace(toEscapePlus,"^$plus$^").replace(toEscapeLine,"^$line$^").replace(toEscapeNewLine,"^$new$^").replace(toEscapeReturn,"^$return$^").replace(toEscapeFeed,"^$feed$^").replace(toEscapeTab,"^$tab$^").replace(toEscapeNBSP,"^$nbsp$^").replace(toEscapeSpace,"^$s$^"));
 					}
@@ -2819,7 +2822,7 @@
 			fixMultiply = /\*(?=[\-\+\/])/g,
 			parseMath = function(str,i) {
 				if (invalidMath.test(str)) error("Invalid characters in math expression: " + str);
-				var match,num1,num2,strmatch,
+				var match,num1,num2,strmatch,operator,
 					oldstr = str, //For errors
 					val = 0;
 				strmatch = str.match(words);
@@ -2829,12 +2832,12 @@
 				while (!digit.test(str)) {
 					match = str.match(mathExpression);
 					if (!match || !match[1] || !match[3]) error("Invalid math string: " + oldstr);
-					match[2] = (match[2] && match[2].length === 2 ? match[2].charAt(0) : match[2]) || "*";
+					operator = ((operator = match[2]) && operator.length === 2 ? operator.charAt(0) : operator) || "*";
 					num1 = parseFloat(match[1]);
 					num2 = parseFloat(match[3]);
 					if (isNaN(num1)) error("Invalid number: " + match[1]);
 					if (isNaN(num2)) error("Invalid number: " + match[3]);
-					switch(match[2]) {
+					switch(operator) {
 						case "*":
 							val = num1 * num2;
 							break;
@@ -2868,15 +2871,18 @@
 			},
 			filterUnique = function(arr) { //Filter for unique elements
 				var results = [],
-					i = 0;
-				for (; i < arr.length; i++) {
+					i = 0,
+					len = arr.length;
+				for (; i < len; i++) {
 					if (indexOf.call(results,arr[i]) === -1) results.push(arr[i]);
 				}
 				return results;
 			},
 			slice = Array.prototype.slice,
 			indexOf = [].indexOf || function(node) { //Safe indexOf()
-				for (var i = 0; i < this.length; i++) {
+				var i = 0,
+					len = this.length;
+				for (; i < len; i++) {
 					if (this[i] === node) return i;
 				}
 				return -1;
@@ -2911,8 +2917,9 @@
 				if (elm.children) return elm.children;
 				var arr = [],
 					i = 0,
-					kids = elm.childNodes;
-				for (; i < kids.length; i++) {
+					kids = elm.childNodes,
+					len = kids.length;
+				for (; i < len; i++) {
 					if (kids[i].nodeType === 1) arr.push(kids[i]);
 				}
 				return arr;
@@ -3091,7 +3098,9 @@
 				 */
 				contains: function(elm,child,string) {
 					if (string) return (elm.textContent || elm.innerText || getInnerText(elm) || "").indexOf(child) > -1;
-					for (var i = 0; i < child.length; i++) {
+					var i = 0,
+						len = child.length;
+					for (; i < len; i++) {
 						if (child[i] && contains(elm,child[i])) return true;
 					}
 					return false;
@@ -3319,8 +3328,9 @@
 				},
 				"#": function(id,context) { //IDs:
 					var arr = getAll(context),
-						i = 0;
-					for (; i < arr.length; i++) {
+						i = 0,
+						len = arr.length;
+					for (; i < len; i++) {
 						if (arr[i].id === id) return [arr[i]]; //There can only be one element with the same ID
 					}
 					return [];
@@ -3373,7 +3383,7 @@
 				}
 				//Allow selectors like:  div:not(.class) , p (notice spaces)
 				selector = selector.replace(spacesAroundCommas,",").replace(startAndEndSpace,"");
-				var nthmatch,pseudoMatches,currMatch,selectors,sel,all,ii,iii,nthval,
+				var nthmatch,pseudoMatches,currMatch,selectors,sel,all,ii,iii,nthval,len,
 					safedPseudos = [],
 					i = 0,
 					allResults = [],
@@ -3388,7 +3398,8 @@
 				 * Then place pseudos back
 				 */
 				if ((pseudoMatches = selector.match(argumentPseudo))) { //Only match pseudos with arguments
-					for (; i < pseudoMatches.length; i++) { //Complex pseudos only:
+					len = pseudoMatches.length;
+					for (; i < len; i++) { //Complex pseudos only:
 						//Save selector
 						safedPseudos.push(currMatch = pseudoMatches[i]);
 						selector = selector.replace(currMatch,"@pseudoargs@"); //Replace selector in string
@@ -3396,19 +3407,19 @@
 				}
 				//We will split where we find the string $split$
 				selectors = escapeAttrs(selector).replace(plusAndSpace,"$split${?&???&?}").replace(lineAndSpace,"$split$<?&????&?<").replace(gtAndSpace,"$split$@?&?????&?@").replace(seperatorSpace,"$split$/?&??&?/").split(",");
-				for (i = 0; i < selectors.length; i++) {
+				len = selectors.length;
+				for (i = 0; i < len; i++) {
 					sel = selectors[i] ? unescapeAttrs(selectors[i]) : "";
 					var _split = sel.split("$split$"),
 						set = 0,
-						len = safedPseudos.length,
 						results = [],
-						rlength,match,old,_i,current,pname,pargs;
+						rlength,match,old,_i,current,pname,pargs,slen;
 					//We do this after to allow complex pseudos, such as: :not(a > b)
-					for (ii = 0; ii < len && matchSavedPseudo.test(sel); ii++) {
+					for (ii = 0; ii < safedPseudos.length && matchSavedPseudo.test(sel); ii++) {
 						for (iii = 0; iii < _split.length; iii++) _split[iii] = _split[iii].replace(matchSavedPseudo,safedPseudos[ii]);
 					}
-					len = _split.length;
-					for (_i = 0; _i < len; _i++) {
+					slen = _split.length;
+					for (_i = 0; _i < slen; _i++) {
 						results = [];
 						sel = _split[_i];
 						//isPseudo is true if we are working with a pseudo
@@ -3429,16 +3440,19 @@
 									needsSecondQuery = secondQuery.test(pname),
 									containsStr = pname === "contains" && isQuoted,
 									queried = [],
-									args = [];
+									args = [],
+									arglen;
 								if (isQuoted) pargs = pargs.substring(1,pargs.length - 1);
 								if (pargs) { //pargs may be undefined; evade error
 									pargs = pargs.replace(rescape,"");
 									args = escapeAttrs(pargs).split(",");
-									for (ii = 0; ii < args.length; ii++) args[ii] = unescapeAttrs(args[ii]);
+									arglen = args.length;
+									for (ii = 0; ii < arglen; ii++) args[ii] = unescapeAttrs(args[ii]);
 								}
 								if (needsSecondQuery && !containsStr) { //Don't repeat queries
 									if (!pargs) error(pname + " called without argument.");
-									for (ii = 0; ii < args.length; ii++) { //Quick complex pseudos
+									arglen = args.length;
+									for (ii = 0; ii < arglen; ii++) { //Quick complex pseudos
 										queried = queried.concat(mSelect(pargs,core)); //Combine arrays
 									}
 								}
