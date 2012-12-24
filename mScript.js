@@ -5,7 +5,7 @@
  * See license.txt for details
  */
 (function(window,undefined) {
-  var document = window.document, //Some shortcuts for window's properties
+	var document = window.document, //Some shortcuts for window's properties
 		location = window.location,
 		navigator = window.navigator,
 		old = { //Used for $.cleanUp(); previous value of $ and mScript
@@ -2333,7 +2333,7 @@
 			} else if (typeof callback === "function") {
 				if (!obj.onfire || !obj.onfire.push) obj.onfire = [];
 				obj.onfire.push(callback);
-			} else if (type === "fire" && obj.onfire && obj.onfire.length) {
+			} else if (callback === "fire" && obj.onfire && obj.onfire.length) {
 				var i = 0,
 					events = obj.onfire,
 					len = events.length;
