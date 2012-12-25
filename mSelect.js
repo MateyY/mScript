@@ -234,7 +234,7 @@
 			return results;
 		},
 		/* .getInnerText()
-		 * Getting innerText/textContent by getting children's node values
+		 * Getting innerText/textContent by getting childrens' node values
 		 * Inspired by Sizzle
 		 */
 		getInnerText = function(elm) {
@@ -248,7 +248,7 @@
 				}
 				return txt;
 			}
-			if (nType === 3 || nType === 4) return elm.nodeValue; //Plain text and CDATA
+			if (nType === 3 || nType === 4) return elm.nodeValue; //Text and CDATA nodes
 		},
 		id = /#((?:\\.|[-\w]|[^\x00-\xa0])+)/, //Matches IDs
 		Class = /\.((?:\\.|[-\w]|[^\x00-\xa0])+)/, //Matches classes
