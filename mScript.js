@@ -2119,10 +2119,6 @@
 				if (x <= 1 || mScript.math.decimal(x)) return false; //Zero, one, and non-whole numbers  aren't composite
 				return !mScript.math.prime(x);
 			},
-			percentToDecimal: function(percent) { //Convert percents to decimals
-				if (/%$/.test(percent)) return mScript.parseFloat(percent) / 100; //Return it
-				mScript.error("math.percent() only accepts strings that end with the \"%\" sign."); //Otherwise, throw a Error
-			},
 			max: function() { //Ignore NaN values
 				var arr = [],
 					i = 0,
