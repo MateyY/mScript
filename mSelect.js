@@ -1225,5 +1225,4 @@
 	};
 	mSelect.expando = expando; //Expando is exposed
 	window.mSelect = mSelect; //Expose
-	window._query = query; //Testing only
 })(this || window);
