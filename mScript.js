@@ -403,10 +403,29 @@
 			attr.nodeValue = val;
 			element.attributes.setNamedItem(attr);
 		},
-		plainNumberCSS = /^(?:z(?:\-)?index)$/i, //CSS properties that use plain numbers
+		//CSS properties that use plain numbers
+		//opacity handled with $().opacity()
+		plainNumberCSS = /^(?:z-?index|zoom)$/i,
 		inputbutton = /^(?:input|button)$/i, //Test whether an element an <input> or a <button>
 		boolAttr = /^(?:checked|selected|disabled|readonly|multiple|is[mM]ap|defer|no[rR]esize|async)$/, //Boolean HTML attributes
 		whiteButNotSpace = /[\n\r\t\f]/g, //Match new lines, tabs, etc.
+		//Enabling and disabling elements:
+		enableDisable = function(disable) {
+			return function() {
+				var i = 0,
+					len = this.length,
+					nodeName;
+				for (; i < len; i++) {
+					if (this[i].nodeType === 1) {
+						if (disable) this[i].setAttribute("disabled","disabled");
+						else this[i].removeAttribute("disabled");
+						//<link> and <style> also need their disabled property set
+						if ((nodeName = this[i].nodeName.toLowerCase()) === "style" || nodeName === "link") this[i].disabled = disable;
+					}
+				}
+				return this;
+			};
+		},
 		/* Some attributes from:
 		 * https://github.com/alexyoung/turing.js/blob/master/build/turing.js
 		 * Turing.js, a JavaScript framework by Alex Young
@@ -445,9 +464,6 @@
 		 */
 		getAttr = function(element,attr,isXML) { //Safe way to get an element property
 			if (!isXML) { //HTML elements:
-				var nodeName = element.nodeName.toLowerCase();
-				//Stylesheets are disabled differently
-				if ((nodeName === "style" || nodeName === "link") && attr === "disabled") return element[attr] ? attr : "enabled";
 				if (element.getAttribute && !bugs.attr.propVsAttr) {
 					//For attribute fixes
 					attr = attrFix[attr] || attr;
@@ -475,13 +491,10 @@
 		},
 		setAttr = function(element,attr,val,isXML) {
 			if (!isXML) { //HTML elements:
-				var nodeName = element.nodeName.toLowerCase();
 				//From jQuery:
 				//Disallow the changing of the type attribute of <input>s and <button>s
-				if (attr === "type" && inputbutton.test(nodeName) && element.parentNode) mScript.error("Type property of inputs and buttons cannot be changed.");
+				if (attr === "type" && inputbutton.test(element.nodeName) && element.parentNode) mScript.error("Type property of inputs and buttons cannot be changed.");
 				if (boolAttr.test(attr) && val !== attr) mScript.error("Property " + attr + " cannot be set the value of " + val);
-				//Stylesheets are disabled differently
-				if ((nodeName === "style" || nodeName === "link") && attr === "disabled") element[attr] = val;
 				else if (element.setAttribute && !bugs.attr.propVsAttr) {
 					//For attribute problems
 					attr = attrFix[attr] || attr;
@@ -517,9 +530,7 @@
 		},
 		removeAttr = function(element,attr,isXML) {
 			if (!isXML) { //HTML elements:
-				//Stylesheets are disabled differently
-				if (element.nodeName.toLowerCase() === "style" && attr === "disabled") element[attr] = "";
-				else if (element.removeAttribute && !bugs.attr.propVsAttr) {
+				if (element.removeAttribute && !bugs.attr.propVsAttr) {
 					//For attribute problems
 					//Notice that this time style refers to the attribute, and we aren't using .cssText
 					attr = attrFix[attr] || attr;
@@ -1830,6 +1841,8 @@
 				}
 				return this; //Return mScript
 			},
+			disable: enableDisable(true),
+			enable: enableDisable(false),
 			//For CSS classes:
 			addClass: function(cssClass) { //Add a CSS class to an element
 				var i = 0,
@@ -2659,9 +2672,6 @@
 			getAttr = function(element,attr) { //Safe way to get an element property
 				attr = attr.toLowerCase(); //Case-insensitivity
 				if (!isXML(element)) { //HTML elements:
-					var nodeName = element.nodeName.toLowerCase();
-					//Stylesheets are disabled differently
-					if ((nodeName === "style" || nodeName === "link") && attr === "disabled") return element[attr] ? attr : "enabled";
 					if (element.getAttribute && attrNotProp) {
 						//For attribute fixes
 						attr = attrFix[attr] || attr;
