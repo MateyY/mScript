@@ -13,12 +13,6 @@
 			mScript: window.mScript
 		},
 		indexOf = Array.prototype.indexOf, //Native array .indexOf() (if available)
-		Orientation, //Some other variables used below
-		OppositeO, //For use on $.gradient()
-		OppositeT,
-		Class, //For getting of cssClass
-		IEOrientation, //For IE v.5.5-7 and v.8 gradients
-		exec, //For execution of $().ready()
 		add = /^\+=/, //Are we appending text or adding new text?
 		msPrefix = /\-ms/g, //IE doesn't use camel case on -ms- prefix (from jQuery)
 		rtrim = /^[\s\f\t\r\n\x20\uFEFF]+|[\s\f\t\r\n\x20\uFEFF]+$/gm, //Trimming RegExp
@@ -3183,7 +3177,7 @@
 					return !pseudos.empty(elm);
 				},
 				/* :target
-				 * Selects elements with an id === to an <a />'s href
+				 * Selects elements with id === #id portion of href
 				 */
 				target: function(elm) {
 					var hash;
@@ -3208,7 +3202,7 @@
 					return (nodeName === "input" && elm.type === "button") || nodeName === "button";
 				},
 				root: function(elm) {
-					return (elm.ownerDocument || {}).documentElement === elm;
+					return elm.ownerDocument.documentElement === elm;
 				},
 				first: function(elm,arr) {
 					return arr[0] === elm;
@@ -3277,10 +3271,12 @@
 				 * Shortcut for <input type="hidden" /> used
 				 */
 				visible: function(elm) {
-					return elm.type !== "hidden" && elm.style && elm.style.display !== "none";
+					var style;
+					return elm.type !== "hidden" && (style = elm.style) && style.display !== "none";
 				},
 				hidden: function(elm) {
-					return elm.type === "hidden" || elm.style && elm.style.display === "none";
+					var style;
+					return elm.type === "hidden" || (style = elm.style) && style.display === "none";
 				},
 				/* :lang()
 				 * Matches like [lang|=val]
@@ -3339,11 +3335,13 @@
 					return useCustomFilter("class",className,getAll(context));
 				}
 			},
+			//Function that returns true:
+			returnTrue = function() {
+				return true;
+			},
 			customFilter = {
 				tag: function(name) {
-					return name === "*" ? function() {
-						return true;
-					} : function(elm) {
+					return name === "*" ? returnTrue : function(elm) {
 						return elm.nodeName.toLowerCase() === name;
 					};
 				},
@@ -3411,12 +3409,12 @@
 					var _split = sel.split("$split$"),
 						set = 0,
 						results = [],
-						rlength,match,old,_i,current,pname,pargs,slen;
+						slen = _split.length,
+						rlength,match,old,_i,current,pname,pargs;
 					//We do this after to allow complex pseudos, such as: :not(a > b)
 					for (ii = 0; ii < safedPseudos.length && matchSavedPseudo.test(sel); ii++) {
-						for (iii = 0; iii < _split.length; iii++) _split[iii] = _split[iii].replace(matchSavedPseudo,safedPseudos[ii]);
+						for (iii = 0; iii < slen; iii++) _split[iii] = _split[iii].replace(matchSavedPseudo,safedPseudos[ii]);
 					}
-					slen = _split.length;
 					for (_i = 0; _i < slen; _i++) {
 						results = [];
 						sel = _split[_i];
@@ -3485,12 +3483,12 @@
 							isPseudo = false;
 							++set;
 						}
-						if (set && len > 1 && old) {
+						if (set && old) {
 							var _name = sel.replace(whitespace,"").replace(spaceEscape," ").replace(plusEscape,"+").replace(gtEscape,">").replace(lineEscape,"~"),
 								array = [],
 								olength = old.length;
 							rlength = results.length;
-							if (seperator[_name]) { //Filter, since sometimes we might have something that is not a seperator
+							 if (seperator[_name]) { //Filter, since sometimes we might have something that is not a seperator
 								for (ii = 0; ii < olength; ii++) {
 									for (iii = 0; iii < rlength; iii++) {
 										if (seperator[_name](results[iii],old[ii]) && indexOf.call(array,results[iii]) === -1) array.push(results[iii]);
@@ -3579,9 +3577,8 @@
 		 */
 		mSelect = document.querySelectorAll && mutationObserver ? function(selector,context) { //With .querySelectorAll() support:
 			context = context || document;
-			var nType,_cached,result,
-				nolen = typeof context.length === "undefined",
-				removeID,newSelector;
+			var nType,_cached,result,removeID,newSelector,
+				nolen = typeof context.length === "undefined";
 			if (!selector || nolen ? ((nType = context.nodeType) !== 1 && nType !== 9) : false) return [];
 			if (nolen) {
 				if (!mSelect.cacheOn) return query(selector,context); //Speed up process for turned-off cache
