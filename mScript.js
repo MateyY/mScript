@@ -2835,10 +2835,8 @@
 					match = str.match(mathExpression);
 					if (!match || !match[1] || !match[3]) error("Invalid math string: " + oldstr);
 					operator = ((operator = match[2]) && operator.length === 2 ? operator.charAt(0) : operator) || "*";
-					num1 = parseFloat(match[1]);
-					num2 = parseFloat(match[3]);
-					if (isNaN(num1)) error("Invalid number: " + match[1]);
-					if (isNaN(num2)) error("Invalid number: " + match[3]);
+					if (isNaN(num1 = parseFloat(match[1]))) error("Invalid number: " + match[1]);
+					if (isNaN(num2 = parseFloat(match[3]))) error("Invalid number: " + match[3]);
 					switch(operator) {
 						case "*":
 							val = num1 * num2;
@@ -3014,9 +3012,9 @@
 					var parent = elm.parentNode,
 						i = 0,
 						ii = 0,
-						arr = [],
+						arr = [0],
 						node = parent[dir],
-						seldigit,_i;
+						seldigit;
 					//Roots shouldn't return true
 					//Disconnected nodes shouldn't either
 					if (!parent || parent.nodeType !== 1) return false;
@@ -3030,8 +3028,7 @@
 					}
 					if (digit.test(sel)) seldigit = true;
 					else {
-						_i = i * 2;
-						for (; ii < _i; ii++) arr.push(parseFloat(parseMath(sel,ii)));
+						for (; arr[i] < ii; i++) arr.push(parseFloat(parseMath(sel,i)));
 					}
 					return seldigit ? i === parseFloat(sel) : indexOf.call(arr,i) > -1;
 				};
@@ -3046,11 +3043,11 @@
 					name = "nth" + (last ? "-last" : "") + "-of-type";
 				return function(elm,sel) {
 					if (!sel) error(name + " called without an argument."); //Requires argument
-					var seldigit,_ii,
+					var seldigit,
 						parent = elm.parentNode,
 						i = 0,
 						ii = 0,
-						array = [],
+						array = [0], //No element can be at 0 and we need it in our array to speed up process
 						nodeName = elm.nodeName,
 						node = parent[dir];
 					//Roots don't return true
@@ -3065,8 +3062,7 @@
 					}
 					if (digit.test(sel)) seldigit = true;
 					else {
-						_ii = ii * 2;
-						for (; i < _ii; i++) array.push(parseFloat(parseMath(sel,i)));
+						for (; array[i] < ii; i++) array.push(parseFloat(parseMath(sel,i)));
 					}
 					return seldigit ? ii === parseFloat(sel) : indexOf.call(array,ii) !== -1;
 				}
