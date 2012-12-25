@@ -2493,12 +2493,11 @@
 		var document = window.document, //Correctly namespaced document
 			docElm = document.documentElement,
 			mutationObserver = window.MutationObserver || window.MozMutationObserver || window.WebKitMutationObserver, //Get supported mutation observer
-			mutationSupport = !!mutationObserver, //Do we have support for mutation observers?
 			expando = "mSelect" + (new Date()), //Expando
 			noop = function() {}, //A function that does nothing
 			//We use mutation observers to detect changes to the DOM
 			//We do not use mutation events
-			addClearCache = mutationSupport ? function(elm) {
+			addClearCache = mutationObserver ? function(elm) {
 				var doc,_docElm;
 				if ((doc = elm.ownerDocument || elm) && (_docElm = doc.documentElement)) {
 					var callback = function() {
@@ -2520,7 +2519,7 @@
 			//context: <node | array>
 			//cached: all selections in that context; object
 			_cache = [],
-			addCache = mutationSupport ? function(selector,result,context) {
+			addCache = mutationObserver ? function(selector,result,context) {
 				var index = indexOfContext(context),
 					cached;
 				if (index > -1) {
@@ -2534,13 +2533,13 @@
 				});
 				_cache[_cache.length - 1].cached[selector] = result;
 			} : noop,
-			getCache = mutationSupport ? function(context) {
+			getCache = mutationObserver ? function(context) {
 				var index = indexOfContext(context);
 				return _cache[index] && _cache[index].cached || [];
 			} : function() { //No caching:
 				return [];
 			},
-			indexOfContext = mutationSupport ? function(context) {
+			indexOfContext = mutationObserver ? function(context) {
 				var i = 0,
 					len = _cache.length;
 				for (; i < len; i++) {
@@ -2719,7 +2718,7 @@
 				return results;
 			},
 			/* .getInnerText()
-			 * Getting innerText/textContent by getting children's node values
+			 * Getting innerText/textContent by getting childrens' node values
 			 * Inspired by Sizzle
 			 */
 			getInnerText = function(elm) {
@@ -2733,11 +2732,11 @@
 					}
 					return txt;
 				}
-				if (nType === 3 || nType === 4) return elm.nodeValue; //Plain text and CDATA
+				if (nType === 3 || nType === 4) return elm.nodeValue; //Text and CDATA nodes
 			},
 			id = /#((?:\\.|[-\w]|[^\x00-\xa0])+)/, //Matches IDs
 			Class = /\.((?:\\.|[-\w]|[^\x00-\xa0])+)/, //Matches classes
-			attr = /\[((?:\\.|[-\w]|[^\x00-\xa0])+)(?:((?:[~\|!\*\^\$])?=)["']?((?:\\.|[-\w#]|[^\x00-\xa0]|[\s\f\t\r\n\x20])*)?["']?)?\]/m, //Matches attributes: [attr=val] (or other operators) and just [attr]
+			attr = /\[((?:\\.|[-\w]|[^\x00-\xa0])+)(?:((?:[~\|!\*\^\$])?=)["']?((?:\\.|[-\w#,]|[^\x00-\xa0]|[\s\f\t\r\n\x20])*)?["']?)?\]/m, //Matches attributes: [attr=val] (or other operators) and just [attr]
 			//Matches attributes with commas, spaces, >, +, and/or ~
 			//Used for escaping
 			attrNeedEscape = /\[(?:(?:\\.|[-\w]|[^\x00-\xa0])+[!\|\*\^\$]?=["']?(?:(?:[~\+>\s\f\t\r\n\x20,](?:\\.|[-\w#]|[^\x00-\xa0])?|(?:\\.|[-\w#]|[^\x00-\xa0])?[~\+>\s\f\t\r\n\x20,])+)["']?|(?:\\.|[-\w]|[^\x00-\xa0])+~=["']?(?:(?:\\.|[-\w#]|[^\x00-\xa0])+)?["']?)\]/gm,
@@ -2772,9 +2771,6 @@
 			quotesStart = /^["']/, //Starting quotes
 			quotesEnd = /["']$/, //Ending quotes
 			eventPseudos = /^:(?:active|hover|focus)|[^\\]:(?:active|hover|focus)/, //Match pseudos that have values that can't be cached
-			//.querySelectorAll(":enabled,:disabled") returns <input> and <button> elements only
-			//We want any elements, such as <style> and <link>
-			customQuery = /:(?:enabled|disabled)/,
 			nthWords = /nth\-(of\-type|child)\((even|odd|last|first)\)/, //Match nth- selectors with words
 			spaceEscape = /\/\?&\?\?&\?\//g, //Space escape pattern
 			plusEscape = /\{\?\&\?\?\?\&\?\}/g, //+ escape pattern
@@ -2790,15 +2786,15 @@
 			//escapedSeperator = new RegExp("(" + spaceEscape.source + "|" + plusEscape.source + "|" + lineEscape.source + "|" + gtEscape.source + ")"),
 			commas = /,/g, //Match commas
 			//We escape the following in attributes:
-			toEscapeGt = />/g,
-			toEscapePlus = /\+/g,
-			toEscapeLine = /~/g,
-			toEscapeSpace = /\s/g,
+			toEscapeGt = />/gm,
+			toEscapePlus = /\+/gm,
+			toEscapeLine = /~/gm,
+			toEscapeSpace = /\s/gm,
 			toEscapeNewLine = /\n/gm,
 			toEscapeReturn = /\r/gm,
-			toEscapeFeed = /\f/g,
-			toEscapeTab = /\t/g,
-			toEscapeNBSP = /\x20/g,
+			toEscapeFeed = /\f/gm,
+			toEscapeTab = /\t/gm,
+			toEscapeNBSP = /\x20/gm,
 			escapeAttrs = function(str) { //Escape spaces, commas, and sibling/children selectors in attrs
 				var match,len,
 					i = 0;
@@ -2812,7 +2808,7 @@
 				return str;
 			},
 			unescapeAttrs = function(str) {
-				return str.replace(escapedComma,",").replace(escapedSpace," ").replace(escapedLine,"~").replace(escapedPlus,"+").replace(escapedGt,">").replace(escapedNewLine,"\n").replace(escapedReturn,"\r").replace(escapedTab,"\t").replace(escapedNBSP,"\x20");
+				return str.replace(escapedComma,",").replace(escapedLine,"~").replace(escapedPlus,"+").replace(escapedGt,">").replace(escapedNewLine,"\n").replace(escapedReturn,"\r").replace(escapedTab,"\t").replace(escapedNBSP,"\x20").replace(escapedSpace," ");
 			},
 			/* Unescaping characters for CSS selector engine
 			 * Characters are escaped with "\\"
@@ -3392,7 +3388,7 @@
 					return filter[simpleType](_sel,core);
 				}
 				//Allow selectors like:  div:not(.class) , p (notice spaces)
-				selector = selector.replace(spacesAroundCommas,",").replace(startAndEndSpace,"");
+				selector = selector.replace(startAndEndSpace,"");
 				var nthmatch,pseudoMatches,currMatch,selectors,sel,all,ii,iii,nthval,len,
 					safedPseudos = [],
 					i = 0,
@@ -3416,7 +3412,7 @@
 					}
 				}
 				//We will split where we find the string $split$
-				selectors = escapeAttrs(selector).replace(plusAndSpace,"$split${?&???&?}").replace(lineAndSpace,"$split$<?&????&?<").replace(gtAndSpace,"$split$@?&?????&?@").replace(seperatorSpace,"$split$/?&??&?/").split(",");
+				selectors = escapeAttrs(selector).replace(spacesAroundCommas,",").replace(plusAndSpace,"$split${?&???&?}").replace(lineAndSpace,"$split$<?&????&?<").replace(gtAndSpace,"$split$@?&?????&?@").replace(seperatorSpace,"$split$/?&??&?/").split(",");
 				len = selectors.length;
 				for (i = 0; i < len; i++) {
 					sel = selectors[i] ? unescapeAttrs(selectors[i]) : "";
@@ -3526,7 +3522,53 @@
 				|| docElm.mozMatchesSelector
 				|| docElm.msMatchesSelector
 				|| docElm.oMatchesSelector
-				|| docElm.webkitMatchesSelector;
+				|| docElm.webkitMatchesSelector,
+			//No short way to test for :focus
+			//.querySelectorAll(":enabled,:disabled") returns <input> and <button> elements only
+			//We want any elements, such as <style> and <link>
+			buggyQuery = [":focus",":enabled",":disabled"],
+			buggyMatches = [":enabled",":disabled"];
+		//.querySelectorAll() specific bugs
+		//Use RegExp strategy by Diego Perini
+		//Based on Sizzle's handling of the bugs
+		(function() {
+			var div = document.createElement("div"),
+				space = whitespace.source;
+			if (div.querySelectorAll) {
+				div.innerHTML = "<select><option selected=\"\"></select>";
+				if (!div.querySelectorAll("[selected]").length) buggyQuery.push("\\[" + space + "*(?:checked|disabled|ismap|multiple|readonly|selected|value)");
+				try { //IE 8 throws error here
+					//Webkit and Opera return false when :checked is used on [selected] elements
+					//Should return true per CSS3 standard
+					if (!div.querySelectorAll(":checked").length) buggyQuery.push(":checked");
+				} catch(e) {} //No need to add to buggyQuery, because the exception will be caught by mSelect()
+				div.innerHTML = "<input type=\"hidden\" a=\"\" />";
+				//Firefox 3.5 doesn't handle :enabled correctly on hidden elements and returns false even if enabled
+				try {
+					if (!div.querySelectorAll(":enabled").length) buggyQuery.push(":disabled",":enabled");
+				} catch(e) {}
+				//Opera 10-12 and IE8 do not handle ^=, $=, and *= correctly
+				//If no value specified, should return false
+				try { //IE8 throws exception here
+					if (div.querySelectorAll("[a^=\"\"]").length) buggyQuery.push("[^$*]=" + space + "*(?:\"\"|'')");
+				} catch(e) {}
+				//Opera 10 and 11 does not throw error on invalid pseudos following a comma
+				try {
+					div.querySelectorAll("*,:z");
+					buggyQuery.push(",.*:");
+				} catch(e) {}
+			}
+			if (nativeMatches) {
+				//Disconnected matches are handled by cloning element anyway, so do not test for those
+				try { //This should cause an error:
+					nativeMatches.call(div,"[a!=\"\"]:z");
+					buggyMatches.push("!=",pseudo);
+				} catch(e) {}
+			}
+			buggyQuery = new RegExp(buggyQuery.join("|"));
+			buggyMatches = new RegExp(buggyMatches.join("|"));
+			div = null;
+		})();
 		//Check from Sizzle:
 		//Safe splice
 		try {
@@ -3543,7 +3585,7 @@
 		 * Use querySelectorAll() if available
 		 * Else, use query()
 		 */
-		mSelect = document.querySelectorAll && mutationSupport ? function(selector,context) { //With .querySelectorAll() support:
+		mSelect = document.querySelectorAll && mutationObserver ? function(selector,context) { //With .querySelectorAll() support:
 			context = context || document;
 			var nType,_cached,result,
 				nolen = typeof context.length === "undefined",
@@ -3556,7 +3598,7 @@
 				addClearCache(context);
 				//:enabled and :disabled should work on <style> and <link>, etc.
 				//<option> elements in IE can't reliably use querySelectorAll()
-				if (!customQuery.test(selector) && context.nodeName !== "OPTION") {
+				if (!buggyQuery.test(selector) && context.nodeName !== "OPTION") {
 					if (nType === 1 && !querySelectorRoot) { //querySelectorAll() fetches wrong elements (only on elements)
 						//From Sizzle
 						//Thanks to Andrew Dupont
@@ -3628,11 +3670,11 @@
 		//If mutation observers aren't available,
 		//Default value is false, and cache cannot
 		//Be turned on at all
-		mSelect.cacheOn = mutationSupport;
+		mSelect.cacheOn = !!mutationObserver;
 		mSelect.is = nativeMatches ? function(selector,elm) {
 			//Fix disconnected nodes problems
 			if (!elm.parentNode) return disconnectedElementIs(selector,elm);
-			if (!customQuery.test(selector)) {
+			if (!buggyMatches.test(selector)) {
 				try {
 					return !!(elm && selector) && nativeMatches.call(elm,selector);
 				} catch(e) {}
