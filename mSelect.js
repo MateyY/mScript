@@ -187,9 +187,6 @@
 		getAttr = function(element,attr) { //Safe way to get an element property
 			attr = attr.toLowerCase(); //Case-insensitivity
 			if (!isXML(element)) { //HTML elements:
-				var nodeName = element.nodeName.toLowerCase();
-				//Stylesheets are disabled differently
-				if ((nodeName === "style" || nodeName === "link") && attr === "disabled") return element[attr] ? attr : "enabled";
 				if (element.getAttribute && attrNotProp) {
 					//For attribute fixes
 					attr = attrFix[attr] || attr;
