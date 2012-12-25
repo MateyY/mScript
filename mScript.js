@@ -6,8 +6,6 @@
  */
 (function(window,undefined) {
 	var document = window.document, //Some shortcuts for window's properties
-		location = window.location,
-		navigator = window.navigator,
 		old = { //Used for $.cleanUp(); previous value of $ and mScript
 			$: window.$,
 			mScript: window.mScript
