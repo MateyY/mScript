@@ -727,7 +727,7 @@
 				return (nodeName === "input" && elm.type === "button") || nodeName === "button";
 			},
 			root: function(elm) {
-				return (elm.ownerDocument || {}).documentElement === elm;
+				return elm.ownerDocument.documentElement === elm;
 			},
 			first: function(elm,arr) {
 				return arr[0] === elm;
