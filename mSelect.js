@@ -1,4 +1,4 @@
-/*! mSelect v.1.1
+/*! mSelect v.1.2
  * The mScript CSS Selector Engine
  * By Matey Yanakiev
  * Released under MIT License
@@ -262,7 +262,7 @@
 		plusAndSpace = /[\s\f\t\r\n\x20]*\+[\s\f\t\r\n\x20]*/gm, //+ and spaces around it
 		lineAndSpace = /[\s\f\t\r\n\x20]*~[\s\f\t\r\n\x20]*/gm, //~ and spaces around it
 		gtAndSpace = /[\s\f\t\r\n\x20]*>[\s\f\t\r\n\x20]*/gm, //> and spaces around it
-		seperatorSpace = /\s+/, //Seperator space; trim it
+		seperatorSpace = /[\s\f\t\r\n\x20]+/gm, //Seperator space; trim it
 		anchor = /^#/, //Anchor links
 		whitespace = /[\s\f\t\r\n\x20]/gm, //Used to replace all non-\s spaces to spaces
 		secondQuery = /^(?:not|contains|matches)$/, //Match selectors that require a second query
@@ -409,14 +409,11 @@
 		toArray = function(arr) { //Quick toArray() method
 			return slice.call(arr,0); //Use safe slice
 		},
-		elementSibling = function(element,type) {
-			var node,
-				prop = type + "Sibling";
-			//If value is null and we just do if (node), we have to go through the loop
-			//Prevent that with typeof node !== "undefined"
-			if (typeof (node = element[type + "ElementSibling"]) !== "undefined") return node;
-			while ((element = element[prop])) {
-				if (element.nodeType === 1) return element;
+		prevElmSibling = function(elm) { //Fetch previous element sibling
+			var node;
+			if (typeof (node = elm.previousElementSibling) !== "undefined") return node;
+			while ((elm = elm.previousSibling)) {
+				if (elm.nodeType === 1) return elm;
 			}
 			return null;
 		},
@@ -425,10 +422,11 @@
 		 * Compares attributes (optional)
 		 * And matches elements against function (optional)
 		 */
-		createInputPseudo = function(pattern,val) {
+		createInputPseudo = function(name,val) {
+			var regExp = !!name.test;
 			return function(elm) {
-				var nName = elm.nodeName.toLowerCase();
-				return (pattern.test ? pattern.test(nName) : pattern === nName) && (!!elm.getAttribute && elm.getAttribute("type")) === val;
+				var nodeName = elm.nodeName.toLowerCase();
+				return (regExp ? name.test(nodeName) : name === nodeName) && elm.getAttribute("type") === val;
 			};
 		},
 		children = function(elm) { //Get children
@@ -492,25 +490,32 @@
 		docOrder = docElm.compareDocumentPosition ? function(a,b) {
 			var adoc = a.ownerDocument,
 				bdoc = b.ownerDocument,
-				ainDoc = contains(adoc,a),
-				binDoc = contains(bdoc,b);
-			//Disconnected nodes go last
-			if (!ainDoc) return binDoc ? 1 : -1;
-			//We can't sort elements in different documents
-			//HTML document gets precedence
-			if (adoc !== bdoc) return bdoc === document ? 1 : -1;
+				binDoc = contains(bdoc,b),
+				ainDoc;
+			if (!binDoc) return -1;
+			if (adoc !== bdoc) {
+				ainDoc = contains(adoc,a);
+				//Disconnected nodes go last
+				if (!ainDoc) return 1;
+				//We can't sort elements in different documents
+				//HTML document gets precedence
+				return bdoc === document ? 1 : -1;
+			}
 			return a.compareDocumentPosition && a.compareDocumentPosition(b) & 4 ? -1 : 1;
 		} : function(a,b) {
 			var adoc = a.ownerDocument,
 				bdoc = b.ownerDocument,
-				ainDoc = contains(adoc,a),
 				binDoc = contains(bdoc,b),
-				asource,bsource;
-			//Disconnected nodes go last
-			if (!ainDoc) return binDoc ? 1 : -1;
-			//We can't sort elements in different documents
-			//HTML document gets precedence
-			if (adoc !== bdoc) return bdoc === document ? 1 : -1;
+				ainDoc,asource,bsource;
+			if (!binDoc) return -1;
+			if (adoc !== bdoc) {
+				ainDoc = contains(adoc,a);
+				//Disconnected nodes go last
+				if (!ainDoc) return 1;
+				//We can't sort elements in different documents
+				//HTML document gets precedence
+				return bdoc === document ? 1 : -1;
+			}
 			//sourceIndex in IE:
 			if ((asource = a.sourceIndex) && (bsource = b.sourceIndex)) return bsource > asource ? -1 : 1;
 			for (; a; a = a.nextSibling) {
@@ -531,7 +536,7 @@
 				var parent = elm.parentNode,
 					i = 0,
 					ii = 0,
-					arr = [0],
+					arr = [0], //No element can be at 0 and we need it in our array to speed up process
 					node = parent[dir],
 					seldigit;
 				//Roots shouldn't return true
@@ -592,7 +597,7 @@
 		 */
 		seperator = {
 			"+": function(elm,sibling) {
-				return elementSibling(elm,"previous") === sibling;
+				return prevElmSibling(elm) === sibling;
 			},
 			"~": function(elm,sibling) {
 				for (var node = elm.previousSibling; node; node = node.previousSibling) {
@@ -783,12 +788,12 @@
 			//Inspired by Sizzle
 			//By John Resig and others
 			focus: function(elm) {
-				var ownDoc = elm && elm.ownerDocument;
-				return ownDoc && elm === ownDoc.activeElement && (!ownDoc.hasFocus || ownDoc.hasFocus()) && !!(elm.type || elm.href || ~elem.tabIndex);
+				var ownDoc;
+				return (ownDoc = elm.ownerDocument) && elm === ownDoc.activeElement && (!ownDoc.hasFocus || ownDoc.hasFocus()) && !!(elm.type || elm.href || ~elm.tabIndex);
 			},
 			active: function(elm) {
-				var ownDoc = elm && elm.ownerDocument;
-				return ownDoc && elm === ownDoc.activeElement;
+				var ownDoc;
+				return (ownDoc = elm.ownerDocument) && elm === ownDoc.activeElement;
 			},
 			/* :visible and :hidden
 			 * Return true if element's display property
@@ -904,7 +909,7 @@
 			}
 			//Allow selectors like:  div:not(.class) , p (notice spaces)
 			selector = selector.replace(startAndEndSpace,"");
-			var nthmatch,pseudoMatches,currMatch,selectors,sel,all,ii,iii,nthval,len,
+			var nthmatch,pseudoMatches,currMatch,selectors,sel,all,ii,iii,nthval,len,_split,set,results,slen,rlength,match,old,_i,current,pname,pargs,_name,array,olength,arr,isQuoted,needsSecondQuery,containsStr,queried,args,arglen,attr,
 				safedPseudos = [],
 				i = 0,
 				allResults = [],
@@ -930,12 +935,10 @@
 			selectors = escapeAttrs(selector).replace(spacesAroundCommas,",").replace(plusAndSpace,"$split${?&???&?}").replace(lineAndSpace,"$split$<?&????&?<").replace(gtAndSpace,"$split$@?&?????&?@").replace(seperatorSpace,"$split$/?&??&?/").split(",");
 			len = selectors.length;
 			for (i = 0; i < len; i++) {
-				sel = selectors[i] ? unescapeAttrs(selectors[i]) : "";
-				var _split = sel.split("$split$"),
-					set = 0,
-					results = [],
-					slen = _split.length,
-					rlength,match,old,_i,current,pname,pargs;
+				_split = (sel = selectors[i] ? unescapeAttrs(selectors[i]) : "").split("$split$");
+				set = 0;
+				results = [];
+				slen = _split.length;
 				//We do this after to allow complex pseudos, such as: :not(a > b)
 				for (ii = 0; ii < safedPseudos.length && matchSavedPseudo.test(sel); ii++) {
 					for (iii = 0; iii < slen; iii++) _split[iii] = _split[iii].replace(matchSavedPseudo,safedPseudos[ii]);
@@ -956,13 +959,13 @@
 							if (!pseudos[pname] && !pseudos[(pname = pname.toLowerCase())]) error("Unsupported pseudo: " + pname);
 							results = rlength ? results : getAll(core);
 							rlength = results.length; //Update length
-							var arr = [],
-								isQuoted = pargs && quotesStart.test(pargs) && quotesEnd.test(pargs),
-								needsSecondQuery = secondQuery.test(pname),
-								containsStr = pname === "contains" && isQuoted,
-								queried = [],
-								args = [],
-								arglen;
+							arr = [];
+							isQuoted = pargs && quotesStart.test(pargs) && quotesEnd.test(pargs);
+							needsSecondQuery = secondQuery.test(pname);
+							containsStr = pname === "contains" && isQuoted;
+							queried = [];
+							args = [];
+							arglen;
 							if (isQuoted) pargs = pargs.substring(1,pargs.length - 1);
 							if (pargs) { //pargs may be undefined; evade error
 								pargs = pargs.replace(rescape,"");
@@ -992,8 +995,8 @@
 						} else if (match[1]) { //Attributes:
 							results = rlength ? results : getAll(core);
 							rlength = results.length; //Update length
-							var attr = match[1].replace(rescape,""),
-								arr = [];
+							attr = match[1].replace(rescape,"");
+							arr = [];
 							for (ii = 0; ii < rlength; ii++) {
 								if (compareAttr(attr,match[2],(match[3] ? match[3].replace(rescape,"") : ""),(current = results[ii]))) arr.push(current);
 							}
@@ -1009,9 +1012,9 @@
 						++set;
 					}
 					if (set && old) {
-						var _name = sel.replace(whitespace,"").replace(spaceEscape," ").replace(plusEscape,"+").replace(gtEscape,">").replace(lineEscape,"~"),
-							array = [],
-							olength = old.length;
+						_name = sel.replace(whitespace,"").replace(spaceEscape," ").replace(plusEscape,"+").replace(gtEscape,">").replace(lineEscape,"~");
+						array = [];
+						olength = old.length;
 						rlength = results.length;
 						 if (seperator[_name]) { //Filter, since sometimes we might have something that is not a seperator
 							for (ii = 0; ii < olength; ii++) {
@@ -1028,7 +1031,7 @@
 				//Evade errors by checking if we have looped yet
 				if (set) allResults = allResults.concat(results);
 			}
-			return allResults;
+			return len > 1 ? allResults.sort(docOrder) : allResults;
 		},
 		mSelect,
 		//Does browser support a native matchesSelector method
@@ -1042,7 +1045,7 @@
 		//.querySelectorAll(":enabled,:disabled") returns <input> and <button> elements only
 		//We want any elements, such as <style> and <link>
 		buggyQuery = [":focus",":enabled",":disabled"],
-		buggyMatches = [":enabled",":disabled"];
+		buggyMatches = [];
 	//.querySelectorAll() specific bugs
 	//Use RegExp strategy by Diego Perini
 	//Based on Sizzle's handling of the bugs
@@ -1081,7 +1084,7 @@
 			} catch(e) {}
 		}
 		buggyQuery = new RegExp(buggyQuery.join("|"));
-		buggyMatches = new RegExp(buggyMatches.join("|"));
+		if (buggyMatches.length) buggyMatches = new RegExp(buggyMatches.join("|"));
 		div = null;
 	})();
 	//Check from Sizzle:
@@ -1188,7 +1191,7 @@
 	mSelect.is = nativeMatches ? function(selector,elm) {
 		//Fix disconnected nodes problems
 		if (!elm.parentNode) return disconnectedElementIs(selector,elm);
-		if (!buggyMatches.test(selector)) {
+		if ((!buggyMatches || !buggyMatches.test(selector)) && !buggyQuery.test(selector)) {
 			try {
 				return !!(elm && selector) && nativeMatches.call(elm,selector);
 			} catch(e) {}
