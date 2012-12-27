@@ -3684,7 +3684,7 @@
 			context = context || document;
 			var nType,
 				nolen = typeof context.length === "undefined";
-			if (!selector || !nolen ? ((nType = context.nodeType) !== 1 && nType !== 9) : false) return [];
+			if (!selector || nolen ? ((nType = context.nodeType) !== 1 && nType !== 9) : false) return [];
 			if (nolen) return query(selector,context);
 			var i = 0,
 				len = context.length,
