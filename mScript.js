@@ -1,4 +1,4 @@
-/*! mScript v.1.0
+/*! mScript v.1.1
  * A JavaScript Library
  * By Matey Yanakiev
  * Released under MIT License
@@ -91,6 +91,14 @@
 		removeready = new RegExp("(?:" + whitespace.source + "|,)*ready,?","gm"),
 		espaces = /[\s\n\r\t]/g,
 		eload = /load/g,
+		rTrue = function() {
+			return true;
+		},
+		rFalse = function() {
+			return false;
+		},
+		//Properties for .eventHolder() not to let in
+		limitProp = /^(?:type|event|isDefaultPrevented|timeStamp|x|y|target|preventDefault|stop(?:Immediate)?Propagation|isDefaultPrevented|is(?:Immediate)?PropagationStopped)$/,
 		removeload = new RegExp("(?:" + whitespace.source + "|,)*load,?","gm"),
 		comma = /,/g,
 		trailingComma = /,$/, //Trailing comma
@@ -593,7 +601,7 @@
 			return results;
 		},
 		getProtoOf = Object.getPrototypeOf || function(obj) {
-			return obj.__proto__ || obj.constructor.prototype;
+			return obj.__proto__ || obj.constructor && obj.constructor.prototype;
 		},
 		createObj = Object.create || function(protoObj) {
 			var _Object = function() {}; //Constructors must be functions
@@ -601,6 +609,7 @@
 			return new _Object(); //Create the object
 		},
 		objNoProto = function(obj,proto) {
+			if (!proto) return obj;
 			var temp = createObj(proto),
 				prop;
 			for (prop in obj) {
@@ -609,6 +618,22 @@
 			var _prototype = getProtoOf(temp);
 			for (prop in _prototype) _prototype[prop] = undefined;
 			return temp;
+		},
+		customHasProp = function(obj,prop) {
+			if (!objOrFunct(obj)) return false;
+			//Get all objects inside our object
+			var proto = getProtoOf(obj),
+				/* Gets object with prototype
+				 * In turn, this prevents the following bug:
+				 * Will mess up for cases such as:
+				 * var obj = function() {this.length = 0;};
+				 * obj.prototype = {length: 0};
+				 * $.hasProp(new obj(),"length"); //Returns false
+				 * Use of custom extend method required
+				 */
+				noProto = objNoProto(obj,proto);
+			if (obj[prop] !== undefined) return noProto[prop] !== undefined;
+			return false;
 		},
 		$wrap = function(elements) { //Create a wrapper object for our elements; that way, lower our load time by 5x+ times
 			elements = elements || [];
@@ -620,7 +645,7 @@
 			return this;
 		},
 		toClass = {},
-	//toClass:
+		//toClass:
 		classes = "Array Boolean Date Number Object String".split(" "),
 		len = classes.length,
 		i = 0;
@@ -766,23 +791,12 @@
 	 ** If prototype's method matches value of object's method, the function still returns true (after reliable checks)
 	 */
 	mScript.hasProp = !bugs.obj.hasOwnProperty ? function(obj,prop) { //Cross browser Object.hasOwnProperty
-		return objOrFunct(obj) && prop ? obj.hasOwnProperty(prop) : false; //For browsers that have native obj.hasOwnProperty
-	} : function(obj,prop) {
-		if (!objOrFunct(obj)) return false;
-		//Get all objects inside our object
-		var proto = getProtoOf(obj) || {},
-			/* Gets object with prototype
-			 * In turn, this prevents the following bug:
-			 * Will mess up for cases such as:
-			 * var obj = function() {this.length = 0;};
-			 * obj.prototype = {length: 0};
-			 * $.hasProp(new obj(),"length"); //Returns false
-			 * Use of custom extend method required
-			 */
-			noProto = objNoProto(obj,proto);
-		if (obj[prop] !== undefined) return noProto[prop] !== undefined;
-		return false;
-	};
+		try {
+			return objOrFunct(obj) && typeof prop === "string" && obj.hasOwnProperty(prop); //For browsers that have native obj.hasOwnProperty
+		} catch(e) {
+			return customHasProp(obj,prop);
+		}
+	} : customHasProp;
 	mScript.extend = function(obj,extend) { //Extending objects
 		if (!objOrFunct(obj)) mScript.error(".extend() called on non-object.");
 		var arglen = arguments.length,
@@ -1060,6 +1074,26 @@
 			//No new constructor is needed
 			if (!(this instanceof mScript.events)) return new mScript.events();
 		},
+		//Inspired by jQuery
+		eventHolder: function(event) {
+			if (!(this instanceof mScript.eventHolder)) return new mScript.eventHolder(event);
+			if (!event) return;
+			if (typeof event === "string") {
+				this.type = event;
+				return this;
+			}
+			var prop;
+			for (prop in event) {
+				if (!limitProp.test(prop) && mScript.hasProp(event,prop)) this[prop] = event[prop]; 
+			}
+			this.type = event.type;
+			this.event = event;
+			this.isDefaultPrevented = event.defaultPrevented || event.returnValue === false || (event.getPreventDefault && event.getPreventDefault()) ? rTrue : rFalse; 
+			this.timeStamp = event.timeStamp || (new Date()).getTime();
+			this.x = event.x || event.pageX || event.clientX;
+			this.y = event.y || event.pageY || event.clientY;
+			this.target = event.target;
+		},
 		/* .memory()
 		 * Memory holder for mScript
 		 * Easy way to store and remove memory
@@ -1290,11 +1324,11 @@
 			 */
 			on: function(event,callback,after) {
 				var type = typeof event,
-					//Events are non-case sensitive; also allows use of hover instead of mouse over and active instead of mousedown
-					//Also, a trailing comma is allowed: "click,hover,"
-					event = type === "string" ? event.toLowerCase().replace(rhover,"mouseover").replace(ractive,"mousedown").replace(whitespace,"").replace(trailingComma,"") : event,
 					i = 0,
-					ii,len;
+					ii,len,elen;
+				//Events are case-insensitive; also allows use of hover instead of mouse over and active instead of mousedown
+					//Also, a trailing comma is allowed: "click,hover,"
+				event = type === "string" ? event.toLowerCase().replace(rhover,"mouseover").replace(ractive,"mousedown").replace(whitespace,"").replace(trailingComma,"") : event;
 				/* Object map:
 				 * .on({
 				 * 		event: callback
@@ -1331,13 +1365,14 @@
 				}
 				event = event.split(",");
 				len = this.length;
+				elen = event.length;
 				for (; i < len; i++) { //Loop through all elements
 					//Only some elements can have events
 					if (this[i].nodeType !== 3 && this.nodeType !== 8) {
 						if (this[i].addEventListener) { //For non-IE
-							for (ii = 0; ii < event.length; ii++) {
+							for (ii = 0; ii < elen; ii++) {
 								//DOM events case-insensitivity
-								if (rDOMEvents.test(event[ii])) event[ii] = DOMEventsReplace[event[ii]];
+								event[ii] = DOMEventsReplace[event[ii]] || event[ii];
 								$e.add(event[ii],callback,this[i]);
 								this[i].addEventListener(event[ii],$e.get(event[ii],callback,this[i]),false); //Loop through all events and add them
 							}
@@ -2202,28 +2237,31 @@
 			if (!this[event]) this[event] = [];
 			var obj = {
 				callback: callback,
+				listenerCallback: function(event) {
+					return callback.call(this,mScript.eventHolder(event));
+				},
 				to: node,
 				IECallback: function() {
-					return obj.callback.call(obj.to,window.event);
+					return obj.callback.call(obj.to,mScript.eventHolder(window.event));
 				}
 			};
 			this[event].push(obj);
 		},
 		get: function(event,callback,node,ie) {
-			var ev,len,
+			var ev,len,curr,
 				i = 0;
 			if (!event) {
 				for (ev in this) {
-					len = this[ev].length;
+					len = (curr = this[ev]).length;
 					for (; i < len; i++) {
-						if ((node ? this[ev][i].to === node : true) && (callback ? callback === this[ev][i].callback : true)) return ie ? this[ev][i].IECallback : this[ev][i].callback; 
+						if ((node ? curr[i].to === node : true) && (!callback || callback === curr[i].callback)) return ie ? curr[i].IECallback : curr[i].listenerCallback; 
 					}
 				}
 				return function() {}; //Return an empty function to evade IE throwing errors
 			}
-			len = this[event].length;
+			len = (curr = this[event]).length;
 			for (; i < len; i++) {
-				if ((node ? this[event][i].to === node : true) && (callback ? callback === this[event][i].callback : true)) return ie ? this[event][i].IECallback : this[event][i].callback; 
+				if ((node ? curr[i].to === node : true) && (!callback || callback === curr[i].callback)) return ie ? curr[i].IECallback : curr[i].listenerCallback; 
 			}
 		},
 		/* The clean-up function of the object
@@ -2244,7 +2282,9 @@
 				for (event in this) {
 					if (mScript.hasProp(this,event)) {
 						len = this[event].length;
-						for (; i < len; i++) if ((ev ? ev === event : true) && (callback ? this[event][i].callback === callback || this[event][i].IECallback === callback : true) && (node ? node === this[event][i].to : true)) this[event].splice(i,1);
+						for (; i < len; i++) {
+							if ((!ev || ev === event) && (!callback || this[event][i].callback === callback || this[event][i].IECallback === callback) && (!node || node === this[event][i].to)) this[event].splice(i,1);
+						}
 					}
 				}
 			}
@@ -2265,10 +2305,10 @@
 				if (mScript.hasProp(this,ev)) {
 					len = this[ev].length;
 					for (; i < len; i++) {
-						if ((event ? event === ev : true) && (callback ? callback === this[ev][i].callback : true) && (node ? node === this[ev][i].to : true)) matched.push({
+						if ((event ? event === ev : true) && (!callback || callback === this[ev][i].callback) && (!node || node === this[ev][i].to)) matched.push({
 							event: ev,
 							node: this[ev][i].to,
-							callback: ie ? this[ev][i].IECallback : this[ev][i].callback
+							callback: ie ? this[ev][i].IECallback : this[ev][i].listenerCallback
 						});
 					}
 				}
@@ -2467,6 +2507,28 @@
 			return mScript.extend({},this.object);
 		}
 	};
+	mScript.eventHolder.prototype = { //.eventHolder prototype
+		preventDefault: function() {
+			var e = this.event;
+			if (!e) return;
+			if (e.preventDefault) e.preventDefault(); //Non-IE
+			else this.returnValue = e.returnValue = false; //IE
+		},
+		stopPropagation: function() {
+			var e = this.event;
+			this.isPropagationStopped = rTrue;
+			if (!e) return;
+			if (e.stopPropagation) e.stopPropagation(); //Non-IE
+			e.cancelBubble = true; //IE
+		},
+		stopImmediatePropagation: function() {
+			this.isImmediatePropagationStopped = rTrue;
+			this.stopPropagation();
+		},
+		isDefaultPrevented: rFalse,
+		isPropagationStopped: rFalse,
+		isImmediatePropagationStopped: rFalse
+	};
 	//Set the prototype
 	$wrap.prototype = mScript.core;
 	$document = mScript(document); //Reference to $(document)
@@ -2540,7 +2602,7 @@
 			 * Used instead of .hasOwnProperty()
 			 */
 			getProtoOf = Object.getPrototypeOf || function(obj) {
-				return obj.__proto__ || obj.constructor.prototype;
+				return obj.__proto__ || obj.constructor && obj.constructor.prototype;
 			},
 			//Getting attributes that are not
 			//Properties of an element
