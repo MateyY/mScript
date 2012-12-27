@@ -1050,11 +1050,10 @@
 	//Use RegExp strategy by Diego Perini
 	//Based on Sizzle's handling of the bugs
 	(function() {
-		var div = document.createElement("div"),
-			space = whitespace.source;
+		var div = document.createElement("div");
 		if (div.querySelectorAll) {
 			div.innerHTML = "<select><option selected=\"\"></select>";
-			if (!div.querySelectorAll("[selected]").length) buggyQuery.push("\\[" + space + "*(?:checked|disabled|ismap|multiple|readonly|selected|value)");
+			if (!div.querySelectorAll("[selected]").length) buggyQuery.push("\\[(?:checked|disabled|ismap|multiple|readonly|selected|value)");
 			try { //IE 8 throws error here
 				//Webkit and Opera return false when :checked is used on [selected] elements
 				//Should return true per CSS3 standard
@@ -1068,7 +1067,7 @@
 			//Opera 10-12 and IE8 do not handle ^=, $=, and *= correctly
 			//If no value specified, should return false
 			try { //IE8 throws exception here
-				if (div.querySelectorAll("[a^=\"\"]").length) buggyQuery.push("[^$*]=" + space + "*(?:\"\"|'')");
+				if (div.querySelectorAll("[a^=\"\"]").length) buggyQuery.push("[^$*]=(?:\"\"|'')");
 			} catch(e) {}
 			//Opera 10 and 11 does not throw error on invalid pseudos following a comma
 			try {
@@ -1147,7 +1146,7 @@
 		context = context || document;
 		var nType,
 			nolen = typeof context.length === "undefined";
-		if (!selector || nolen ? ((nType = context.nodeType) !== 1 && nType !== 9) : false) return [];
+		if (!selector || !nolen ? ((nType = context.nodeType) !== 1 && nType !== 9) : false) return [];
 		if (nolen) return query(selector,context);
 		var i = 0,
 			len = context.length,
