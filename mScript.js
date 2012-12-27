@@ -1,4 +1,4 @@
-/*! mScript v.1.1
+/*! mScript v.1.1.1
  * A JavaScript Library
  * By Matey Yanakiev
  * Released under MIT License
@@ -1328,7 +1328,11 @@
 					ii,len,elen,nType;
 				//Events are case-insensitive; also allows use of hover instead of mouse over and active instead of mousedown
 					//Also, a trailing comma is allowed: "click,hover,"
-				event = type === "string" ? event.toLowerCase().replace(rhover,"mouseover").replace(ractive,"mousedown").replace(whitespace,"").replace(trailingComma,"") : event;
+				if (event && type === "string") event = event.toLowerCase().replace(rhover,"mouseover").replace(ractive,"mousedown").replace(whitespace,"").replace(trailingComma,"");
+				//Validation
+				//If our event isn't a string
+				else if (type !== "object") mScript.error(".on() invoked with incorrect arguments.");
+				//We can also bind the ready handler inside .on(): .on("ready")
 				/* Object map:
 				 * .on({
 				 * 		event: callback
@@ -1336,19 +1340,12 @@
 				 * 		eventx: callbackx
 				 * });
 				 */
-				if (event && type === "object") {
+				if (type === "object") {
 					for (type in event) { //Loop through all events
-						//If object has a function handler
-						if (mScript.hasProp(event,type) && typeof event[type] === "function") this.on(type,event[type]);
+						if (mScript.hasProp(event,type)) this.on(type,event[type]);
 					}
 					return this; //Return from here
 				}
-				//Validation
-				if (!event || type !== "string" && typeof callback !== "function" && type !== "object") { //If our event isn't a string, and our callback isn't a function
-					mScript.error(".on() invoked with incorrect arguments.");
-					return this; //Return
-				}
-				//We can also bind the ready handler inside .on(): .on("ready")
 				if (eready.test(event)) { //However, we cannot use .end("ready")!
 					this.ready(callback); //Add the ready event
 					event = event.replace(removeready,"");
@@ -1399,19 +1396,19 @@
 				var type = typeof event,
 					i = 0,
 					len = this.length,
-					ii,nodeType;
+					ii,nodeType,currEvent,events,usedEvent,elen;
 				//Events are non-case sensitive; also allows use of hover instead of mouse over and active instead of mousedown
 				//Trailing comma allowed: "click,hover,"
-				if (type === "string") event = event.toLowerCase().replace(rhover,"mouseover").replace(ractive,"mousedown").replace(spaces,"").replace(trailingComma,"");
+				if (event && type === "string") event = event.toLowerCase().replace(rhover,"mouseover").replace(ractive,"mousedown").replace(spaces,"").replace(trailingComma,"");
 				//Validation
-				//If our event isn't a string, and our callback isn't a function
-				else if (type !== "object" && typeof callback !== "function") mScript.error(".end() requires two arguments: an event (which must always be a string) and a callback (which must always be a function).");
+				//If our event isn't a string
+				else if (type !== "object") mScript.error(".end() requires two arguments: an event (which must always be a string) and a callback (which must always be a function).");
 				//Wildcard: removes all events off an element
 				if (event === "*") {
 					for (; i < len; i++) {
 						//Some elements can't have events
 						if ((nodeType = this[i].nodeType) !== 3 && nodeType !== 8) {
-							var events = $e.getAll(null,callback,this[i],!!this[i].detachEvent);
+							events = $e.getAll(null,callback,this[i],!!this[i].detachEvent);
 							for (ii = 0; ii < events.length; ii++) {
 								if (this[i].removeEventListener) this[i].removeEventListener(events[ii].event,events[ii].callback,false);
 								else if (this[i].detachEvent) {
@@ -1429,10 +1426,10 @@
 				 * 		eventx: callbackx
 				 * });
 				 */
-				else if (event && type === "object") {
+				else if (type === "object") {
 					for (type in event) { //Loop through all events
 						//If object has a function handler
-						if (mScript.hasProp(event,type) && typeof event[type] === "function") this.end(type,event[type]);
+						if (mScript.hasProp(event,type)) this.end(type,event[type]);
 					}
 					return this; //Return
 				}
@@ -1441,19 +1438,20 @@
 				event = event.split(",");
 				//Remove all events of a certain type
 				if (!callback) {
-					var events,ii;
 					for (; i < len; i++) {
 						//Some elements can't have events
 						if ((nodeType = this[i].nodeType) !== 3 && nodeType !== 8) {
 							for (ii = 0; ii < event.length; ii++) {
-								if (rDOMEvents.test(event[ii])) event[ii] = DOMEventsReplace[event[ii]];
-								events = $e.getAll(event[ii],callback,this[i],!!this[i].detachEvent);
-								for (iii = 0; iii < events.length; iii++) {
-									if (this[i].removeEventListener) this[i].removeEventListener(events[iii].event,events[iii].callback,false);
+								currEvent = DOMEventsReplace[(currEvent = event[ii])] || currEvent;
+								events = $e.getAll(currEvent,callback,this[i],!!this[i].detachEvent);
+								elen = events.length;
+								for (iii = 0; iii < elen; iii++) {
+									usedEvent = events[iii];
+									if (this[i].removeEventListener) this[i].removeEventListener(usedEvent.event,usedEvent.callback,false);
 									else if (this[i].detachEvent) {
-										needsKeyTreatment(this[i],event[ii]) ? document.detachEvent("on" + events[iii].event,events[iii].callback) : this[i].detachEvent("on" + events[iii].event,events[iii].callback);
+										needsKeyTreatment(this[i],currEvent) ? document.detachEvent("on" + usedEvent.event,usedEvent.callback) : this[i].detachEvent("on" + usedEvent.event,usedEvent.callback);
 									}
-									$e.remove(events[iii].event,events[iii].callback,this[i]);
+									$e.remove(usedEvent.event,usedEvent.callback,this[i]);
 								}
 							}
 						}
@@ -1463,12 +1461,12 @@
 						//Some elements can't have events
 						if ((nodeType = this[i].nodeType) !== 3 && nodeType !== 8) {
 							for (ii = 0; ii < event.length; ii++) {
-								if (rDOMEvents.test(event[ii])) event[ii] = DOMEventsReplace[event[ii]];
+								currEvent = DOMEventsReplace[(currEvent = event[ii])] || currEvent;
 								//For non-IE
-								if (this[i].removeEventListener) this[i].removeEventListener(event[ii],$e.get(event[ii],callback,this[i]),false); //Loop through all events and remove them
+								if (this[i].removeEventListener) this[i].removeEventListener(currEvent,$e.get(currEvent,callback,this[i]),false); //Loop through all events and remove them
 								//For IE
-								else if (this[i].detachEvent) needsKeyTreatment(this[i],event[ii]) ? document.detachEvent("on" + event,$e.get(event[ii],callback,this[i],true)) : this[i].detachEvent("on" + event,$e.get(event[ii],callback,this[i],true)); //Loop through all events and remove them
-								$e.remove(event[ii],callback,this[i]);
+								else if (this[i].detachEvent) needsKeyTreatment(this[i],currEvent) ? document.detachEvent("on" + currEvent,$e.get(currEvent,callback,this[i],true)) : this[i].detachEvent("on" + currEvent,$e.get(currEvent,callback,this[i],true)); //Loop through all events and remove them
+								$e.remove(currEvent,callback,this[i]);
 							}
 						}
 					}
@@ -1487,9 +1485,8 @@
 					currEvent,ii,ii,events,evlen;
 				for (; i < len; i++) {
 					for (ii = 0; ii < elength; ii++) {
-						currEvent = event[ii];
 						//DOM events case-insensitivity
-						currEvent = DOMEventsReplace[currEvent] || (currEvent === "" ? null : currEvent);
+						currEvent = DOMEventsReplace[(currEvent = event[ii])] || currEvent || null;
 						//Get all matching events
 						//Don't use callback that is called to element
 						//We'll call it ourselves, so that we can set the triggered attribute
@@ -2251,7 +2248,7 @@
 			this[event].push(obj);
 		},
 		get: function(event,callback,node,ie) {
-			var ev,len,curr,
+			var ev,len,currEvent,
 				i = 0;
 			if (!event) {
 				for (ev in this) {
@@ -2262,9 +2259,10 @@
 				}
 				return function() {}; //Return an empty function to evade IE throwing errors
 			}
-			len = (curr = this[event]).length;
+			len = this[event].length;
 			for (; i < len; i++) {
-				if ((node ? curr[i].to === node : true) && (!callback || callback === curr[i].callback)) return ie ? curr[i].IECallback : curr[i].listenerCallback; 
+				currEvent = this[event][i];
+				if ((!node || currEvent.to === node) && (!callback || callback === currEvent.callback)) return ie ? currEvent.IECallback : currEvent.listenerCallback; 
 			}
 		},
 		/* The clean-up function of the object
@@ -2277,7 +2275,7 @@
 		 * Callback can be either the regular callback or the IE callback
 		 */
 		remove: function(ev,callback,node) {
-			var event,len,
+			var event,len,currEvent,
 				i = 0;
 			//Resetting an event array
 			if (ev && !callback && !node) this[ev] = [];
@@ -2286,7 +2284,8 @@
 					if (mScript.hasProp(this,event)) {
 						len = this[event].length;
 						for (; i < len; i++) {
-							if ((!ev || ev === event) && (!callback || this[event][i].callback === callback || this[event][i].IECallback === callback) && (!node || node === this[event][i].to)) this[event].splice(i,1);
+							currEvent = this[event][i];
+							if (currEvent && (!ev || ev === event) && (!callback || currEvent.callback === callback || currEvent.listenerCallback === callback || currEvent.IECallback === callback) && (!node || node === currEvent.to)) this[event].splice(i,1);
 						}
 					}
 				}
@@ -2302,16 +2301,16 @@
 		 */
 		getAll: function(event,callback,node,ie) {
 			var matched = [],
-				i = 0,
-				ev,len;
+				i,ev,len,currEvent;
 			for (ev in this) {
 				if (mScript.hasProp(this,ev)) {
 					len = this[ev].length;
-					for (; i < len; i++) {
-						if ((event ? event === ev : true) && (!callback || callback === this[ev][i].callback) && (!node || node === this[ev][i].to)) matched.push({
+					for (i = 0; i < len; i++) {
+						currEvent = this[ev][i];
+						if (currEvent && (!event || event === ev) && (!callback || callback === currEvent.callback) && (!node || node === currEvent.to)) matched.push({
 							event: ev,
-							node: this[ev][i].to,
-							callback: ie ? this[ev][i].IECallback : this[ev][i].listenerCallback
+							node: currEvent.to,
+							callback: ie ? currEvent.IECallback : currEvent.listenerCallback
 						});
 					}
 				}
@@ -3684,7 +3683,7 @@
 			context = context || document;
 			var nType,
 				nolen = typeof context.length === "undefined";
-			if (!selector || nolen ? ((nType = context.nodeType) !== 1 && nType !== 9) : false) return [];
+			if (!selector || nolen && (nType = context.nodeType) !== 1 && nType !== 9) return [];
 			if (nolen) return query(selector,context);
 			var i = 0,
 				len = context.length,
