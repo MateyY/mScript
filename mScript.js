@@ -881,14 +881,14 @@
 			//We can have a filtering function:
 			var i = 0,
 				results = [],
-				len;
+				len,_i;
 			if (typeof (len = obj.length) === "number") {
 				for (; i < len; i++) {
 					if (callback.call(obj[i],obj[i],i,obj)) results.push(obj[i]);
 				}
 			} else {
 				for (i in obj) {
-					if (mScript.hasProp(obj,i) && callback.call(obj[i],obj[i],i,obj)) results.push(obj[i]);
+					if (!isNaN((_i = parseFloat(i))) && mScript.hasProp(obj,i) && Math.round(_i) === _i && callback.call(obj[i],obj[i],i,obj)) results.push(obj[i]);
 				}
 			}
 			return results;
