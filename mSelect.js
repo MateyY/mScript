@@ -67,7 +67,7 @@
 		 * Used instead of .hasOwnProperty()
 		 */
 		getProtoOf = Object.getPrototypeOf || function(obj) {
-			return obj.__proto__ || obj.constructor.prototype;
+			return obj.__proto__ || obj.constructor && obj.constructor.prototype;
 		},
 		//Getting attributes that are not
 		//Properties of an element
