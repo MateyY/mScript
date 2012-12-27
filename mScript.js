@@ -1325,7 +1325,7 @@
 			on: function(event,callback,after) {
 				var type = typeof event,
 					i = 0,
-					ii,len,elen;
+					ii,len,elen,nType;
 				//Events are case-insensitive; also allows use of hover instead of mouse over and active instead of mousedown
 					//Also, a trailing comma is allowed: "click,hover,"
 				event = type === "string" ? event.toLowerCase().replace(rhover,"mouseover").replace(ractive,"mousedown").replace(whitespace,"").replace(trailingComma,"") : event;
@@ -1358,7 +1358,7 @@
 				//This behavior can be escaped with: $("element").on("load",f,false)
 				if (eload.test(event) && mScript.windowLoadState > 1 && (after === undefined || after)) {
 					this.each(function() {
-						var nType = this.nodeType;
+						nType = this.nodeType;
 						if (nType !== 3 && nType !== 8) callback.call(this);
 					});
 					event = event.replace(removeload,""); //Multiple events
@@ -1368,7 +1368,7 @@
 				elen = event.length;
 				for (; i < len; i++) { //Loop through all elements
 					//Only some elements can have events
-					if (this[i].nodeType !== 3 && this.nodeType !== 8) {
+					if ((nType = this[i].nodeType) !== 3 && nType !== 8) {
 						if (this[i].addEventListener) { //For non-IE
 							for (ii = 0; ii < elen; ii++) {
 								//DOM events case-insensitivity
@@ -1397,20 +1397,20 @@
 			 */
 			end: function(event,callback) {
 				var type = typeof event,
-					//Events are non-case sensitive; also allows use of hover instead of mouse over and active instead of mousedown
-					//Trailing comma allowed: "click,hover,"
-					event = type === "string" ? event.toLowerCase().replace(rhover,"mouseover").replace(ractive,"mousedown").replace(spaces,"").replace(trailingComma,"") : event,
 					i = 0,
 					len = this.length,
-					ii;
+					ii,nodeType;
+				//Events are non-case sensitive; also allows use of hover instead of mouse over and active instead of mousedown
+				//Trailing comma allowed: "click,hover,"
+				if (type === "string") event = event.toLowerCase().replace(rhover,"mouseover").replace(ractive,"mousedown").replace(spaces,"").replace(trailingComma,"");
 				//Validation
 				//If our event isn't a string, and our callback isn't a function
-				if (type !== "string" && typeof callback !== "function" && type !== "object") mScript.error(".end() requires two arguments: an event (which must always be a string) and a callback (which must always be a function).");
+				else if (type !== "object" && typeof callback !== "function") mScript.error(".end() requires two arguments: an event (which must always be a string) and a callback (which must always be a function).");
 				//Wildcard: removes all events off an element
 				if (event === "*") {
 					for (; i < len; i++) {
 						//Some elements can't have events
-						if (this[i].nodeType !== 3 && this[i].nodeType !== 8) {
+						if ((nodeType = this[i].nodeType) !== 3 && nodeType !== 8) {
 							var events = $e.getAll(null,callback,this[i],!!this[i].detachEvent);
 							for (ii = 0; ii < events.length; ii++) {
 								if (this[i].removeEventListener) this[i].removeEventListener(events[ii].event,events[ii].callback,false);
@@ -1444,7 +1444,7 @@
 					var events,ii;
 					for (; i < len; i++) {
 						//Some elements can't have events
-						if (this[i].nodeType !== 3 && this[i].nodeType !== 8) {
+						if ((nodeType = this[i].nodeType) !== 3 && nodeType !== 8) {
 							for (ii = 0; ii < event.length; ii++) {
 								if (rDOMEvents.test(event[ii])) event[ii] = DOMEventsReplace[event[ii]];
 								events = $e.getAll(event[ii],callback,this[i],!!this[i].detachEvent);
@@ -1461,7 +1461,7 @@
 				} else {
 					for (; i < len; i++) { //Loop through all elements
 						//Some elements can't have events
-						if (this[i].nodeType !== 3 && this[i].nodeType !== 8) {
+						if ((nodeType = this[i].nodeType) !== 3 && nodeType !== 8) {
 							for (ii = 0; ii < event.length; ii++) {
 								if (rDOMEvents.test(event[ii])) event[ii] = DOMEventsReplace[event[ii]];
 								//For non-IE
@@ -1495,7 +1495,10 @@
 						//We'll call it ourselves, so that we can set the triggered attribute
 						events = $e.getAll(event[ii],callback,this[i]);
 						evlen = events.length;
-						for (iii = 0; iii < evlen; iii++) events[iii].callback.call(this[i],{},true);
+						for (iii = 0; iii < evlen; iii++) events[iii].callback.call(this[i],mScript.eventHolder({
+							type: event[ii],
+							target: this[i]
+						}),true);
 					}
 				}
 				return this;
@@ -3585,11 +3588,10 @@
 		//Use RegExp strategy by Diego Perini
 		//Based on Sizzle's handling of the bugs
 		(function() {
-			var div = document.createElement("div"),
-				space = whitespace.source;
+			var div = document.createElement("div");
 			if (div.querySelectorAll) {
 				div.innerHTML = "<select><option selected=\"\"></select>";
-				if (!div.querySelectorAll("[selected]").length) buggyQuery.push("\\[" + space + "*(?:checked|disabled|ismap|multiple|readonly|selected|value)");
+				if (!div.querySelectorAll("[selected]").length) buggyQuery.push("\\[(?:checked|disabled|ismap|multiple|readonly|selected|value)");
 				try { //IE 8 throws error here
 					//Webkit and Opera return false when :checked is used on [selected] elements
 					//Should return true per CSS3 standard
@@ -3603,7 +3605,7 @@
 				//Opera 10-12 and IE8 do not handle ^=, $=, and *= correctly
 				//If no value specified, should return false
 				try { //IE8 throws exception here
-					if (div.querySelectorAll("[a^=\"\"]").length) buggyQuery.push("[^$*]=" + space + "*(?:\"\"|'')");
+					if (div.querySelectorAll("[a^=\"\"]").length) buggyQuery.push("[^$*]=(?:\"\"|'')");
 				} catch(e) {}
 				//Opera 10 and 11 does not throw error on invalid pseudos following a comma
 				try {
@@ -3682,7 +3684,7 @@
 			context = context || document;
 			var nType,
 				nolen = typeof context.length === "undefined";
-			if (!selector || nolen ? ((nType = context.nodeType) !== 1 && nType !== 9) : false) return [];
+			if (!selector || !nolen ? ((nType = context.nodeType) !== 1 && nType !== 9) : false) return [];
 			if (nolen) return query(selector,context);
 			var i = 0,
 				len = context.length,
