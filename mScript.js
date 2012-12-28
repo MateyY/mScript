@@ -3818,7 +3818,7 @@
 		$e = $document = null;
 	});
 	mScript.bugs = bugs;
-	mScript.ajaxSupport = !!(detectedAJAX = mScript.detectAJAX(true)).name; //Detect whether AJAX requests can be made
+	mScript.ajaxSupport = !!((detectedAJAX = mScript.detectAJAX(true)).name); //Detect whether AJAX requests can be made
 	mScript.supportedAJAX = mScript.ajaxSupport ? detectedAJAX : null; //No need to call $.detectAJAX(true) repeatedly
 	window.mScript = window.$ = mScript;
 })(this || window);
