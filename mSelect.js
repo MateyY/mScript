@@ -1,4 +1,4 @@
-/*! mSelect v.1.2
+/*! mSelect v.1.2.1
  * The mScript CSS Selector Engine
  * By Matey Yanakiev
  * Released under MIT License
@@ -232,7 +232,7 @@
 			}
 			return results;
 		},
-		/* .getInnerText()
+		/* getInnerText()
 		 * Getting innerText/textContent by getting childrens' node values
 		 * Inspired by Sizzle
 		 */
@@ -1163,7 +1163,7 @@
 		if (type === "object" || type === "function") {
 			proto = getProtoOf(name); //Cross-browser replacement for .hasOwnProperty()
 			for (prop in name) {
-				if (typeof name[prop] === "function" && name[prop] !== proto[prop]) pseudos[prop.toLowerCase()] = name[prop];
+				if (typeof name[prop] === "function" && (!proto || name[prop] !== proto[prop])) pseudos[prop.toLowerCase()] = name[prop];
 			}
 		}
 		if (typeof callback === "function") pseudos[name.toLowerCase()] = callback;
