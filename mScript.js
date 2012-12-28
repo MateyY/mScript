@@ -107,8 +107,8 @@
 		pxs = /px$/, //Match strings that end with px
 		marginRight = /^(?:margin-?[rR]ight)$/,
 		getStyle = function(element,prop,type) { //Make a seperate function, so that we can use it on two functions
-			var value,body,docElm,computed;
-			if (!element || element.nodeName < "@") return null;
+			var value,body,docElm,computed,isDoc,isWindow;
+			if (!element || !element.style && !(isDoc = element === document) && !(isWindow = window === element.window)) return null;
 			if (!window.getComputedStyle) { //If we are in IE8 and before, we can still get some properties
 				if (prop === "height") value = element.offsetHeight; //Height
 				else if (prop === "width") value = element.offsetWidth; //Width
@@ -120,7 +120,7 @@
 				}
 			} else { //Otherwise
 				//Getting the width/height of the document and/or window is a little different
-				if (element === document || element === element.window) {
+				if (isDoc || isWindow) {
 					docElm = document.documentElement;
 					body = document.body;
 					if (prop === "height") value = mScript.math.max(body.scrollHeight,body.offsetHeight,docElm.clientHeight,docElm.scrollHeight,docElm.offsetHeight);
@@ -2138,7 +2138,7 @@
 				for (; i < len; i++) {
 					if (!isNaN(arguments[i])) arr.push(arguments[i]);
 				}
-				return Math.max.apply(arr);
+				return Math.max.apply(Math,arr);
 			},
 			min: function() { //Ignore NaN values
 				var arr = [],
@@ -2147,7 +2147,7 @@
 				for (; i < len; i++) {
 					if (!isNaN(arguments[i])) arr.push(arguments[i]);
 				}
-				return Math.min.apply(arr);
+				return Math.min.apply(Math,arr);
 			},
 			factorial: function(x) { //Find the factorial of any number
 				if (x < 0) mScript.error("math.factorial() called on negative number.");
