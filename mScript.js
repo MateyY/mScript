@@ -1,4 +1,4 @@
-/*! mScript v.1.1.1
+/*! mScript v.1.1.2
  * A JavaScript Library
  * By Matey Yanakiev
  * Released under MIT License
@@ -19,6 +19,7 @@
 		//Used to fetch current day:
 		dateDays = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"],
 		coreTrim = String.prototype.trim, //Core "".trim (if available)
+		coreHasOwn = Object.prototype.hasOwnProperty, //.hasOwnProperty()
 		mScript = function(element,create) {
 			var elements = [],
 				type;
@@ -65,10 +66,10 @@
 			}
 		},
 		pushSiblings = function(element,arr) { //Push the siblings of an element to a given array
-			var parent;
+			var parent,node;
 			//Doesn't work with falsy values + disconnected nodes
 			if (!element || !(parent = element.parentNode)) return arr;
-			for (var node = parent.firstChild; node; node = node.nextSibling) {
+			for (node = parent.firstChild; node; node = node.nextSibling) {
 				if (node.nodeType === 1 && node !== element && mScript.indexOf(arr,node) === -1) arr.push(node);
 			}
 			return arr;
@@ -104,36 +105,45 @@
 		trailingComma = /,$/, //Trailing comma
 		cssUnits = /(?:px|pc|pt|ex|em|mm|cm|in|%)$/, //RegExp to match CSS units
 		pxs = /px$/, //Match strings that end with px
+		marginRight = /^(?:margin-?[rR]ight)$/,
 		getStyle = function(element,prop,type) { //Make a seperate function, so that we can use it on two functions
-			var value,
-				type
+			var value,body,docElm,computed;
 			if (!element || element.nodeName < "@") return null;
 			if (!window.getComputedStyle) { //If we are in IE8 and before, we can still get some properties
 				if (prop === "height") value = element.offsetHeight; //Height
 				else if (prop === "width") value = element.offsetWidth; //Width
 				else if (element.currentStyle) { //Else, use currentStyle
-					value = type ? mScript.strToFloat(element.currentStyle[prop]) : element.currentStyle[prop];
+					value = element.currentStyle[prop];
+					value = type ? mScript.strToFloat(value) : value;
 					//If we're looking for a string, or we cannot get a number
 					return typeof value !== "undefined" ? value : null;
 				}
 			} else { //Otherwise
-				//Getting the height of the document and/or window is a little different
+				//Getting the width/height of the document and/or window is a little different
 				if (element === document || element === element.window) {
-					if (prop === "height") value = mScript.math.max(document.body.scrollHeight,document.body.offsetHeight,document.documentElement.clientHeight,document.documentElement.scrollHeight,document.documentElement.offsetHeight);
-					else if (prop === "width") value = mScript.math.max(document.body.scrollWidth,document.body.offsetWidth,document.documentElement.clientWidth,document.documentElement.scrollWidth,document.documentElement.offsetWidth);
+					docElm = document.documentElement;
+					body = document.body;
+					if (prop === "height") value = mScript.math.max(body.scrollHeight,body.offsetHeight,docElm.clientHeight,docElm.scrollHeight,docElm.offsetHeight);
+					else if (prop === "width") value = mScript.math.max(body.scrollWidth,body.offsetWidth,docElm.clientWidth,docElm.scrollWidth,docElm.offsetWidth);
 					else return null; //We can't get any other values
 				}
-				if ((type = typeof value) === "undefined") {
+				if (value === undefined) {
+					if (prop.test(marginRight) && bugs.css.marginRightComputed) { //Some versions of webkit return unreliable right margin
+						var style = element.style,
+							olddisplay = style.display || getStyle(element,"display");
+						style.display = "inline-block";
+						value = (window.getComputedStyle(element,null) || {}).marginRight;
+						style.display = olddisplay;
+						return type ? mScript.strToFloat(value) : value;
+					}
+					computed = window.getComputedStyle(element,null);
+					if (!computed) return null;
 					//Percent bug can be fixed with width and height
-					if (bugs.css.computedPercent && element.parentNode && (prop === "width" || prop === "height")) value = element.parentNode.offsetWidth * (parseFloat(window.getComputedStyle(element,null)[prop]) / 100);
-					else value = (window.getComputedStyle(element,null)[prop]); //For strings
+					if (bugs.css.computedPercent && element.parentNode && (prop === "width" || prop === "height")) value = element.parentNode.offsetWidth * (parseFloat(computed[prop]) / 100);
+					else value = prop === "filter" ? computed.getPropertyValue(prop) : computed[prop]; //From jQuery: .getPropertyValue() needs to be used for "filter" in IE9
 				}
-				if ((prop === "width" || prop === "height") && type === "number") {
-					//If we are wanting a number AND if the value is in pixels, return number
-					if (type && pxs.test(value)) return mScript.strToFloat(value);
-					return cssUnits.test(value) ? value : value + "px";
-				}
-				if (type && pxs.test(value)) return (value = mScript.strToFloat(value)) !== undefined ? value : null;
+				if ((prop === "width" || prop === "height") && typeof value === "number") return type ? mScript.strToFloat(value) : cssUnits.test(value) ? value : value + "px";
+				if (type && typeof value === "string") return mScript.strToFloat(value);
 				return value !== undefined ? value : null;
 			}
 		},
@@ -153,7 +163,7 @@
 					}
 				}
 			}
-			return tempArray;
+			return arr;
 		},
 		slice = (function() { //Safe slice (needs to be indirectly called: slice.call() or slice.apply())
 			try {
@@ -260,8 +270,7 @@
 		nodeName = function(element) {
 			return element ? element.nodeName.toLowerCase() : null;
 		},
-		initSpace = /^\s/,
-		endSpace = /\s$/,
+		endSpace = /\s+$/,
 		allSpace = /^\s+$/g,
 		moreThanOneSpace = /\s{2,}/g,
 		specialChildren = /^(?:option|colgroup|tbody|thead|tfoot|tr|th|td)$/, //Elements that need special parents
@@ -332,14 +341,11 @@
 			 * opacity
 			 * $float (cssFloat vs. styleFloat)
 			 * computedPercent (tested on DOMReady, so default is false)
+			 * marginRightComputed (tested on DOMReady, so default is false)
 			 */
 			css: {
-				computedPercent: false
-			},
-			//.hasOwnProperty() handled below
-			//Default of proto is false
-			obj: {
-				proto: false
+				computedPercent: false,
+				marginRightComputed: false
 			},
 			/* Multiple bugs related to:
 			 ** .getAttribute()
@@ -354,9 +360,7 @@
 				focusin: false,
 				change: false
 			},
-			script: {
-				read: false
-			}
+			script: {}
 		},
 		xmlActiveXVersion = window.ActiveXObject && (function() { //Supported ActiveXObject version for XML parsing
 			//Do not check for specific support, as that would be too slow
@@ -619,22 +623,6 @@
 			for (prop in _prototype) _prototype[prop] = undefined;
 			return temp;
 		},
-		customHasProp = function(obj,prop) {
-			if (!objOrFunct(obj)) return false;
-			//Get all objects inside our object
-			var proto = getProtoOf(obj),
-				/* Gets object with prototype
-				 * In turn, this prevents the following bug:
-				 * Will mess up for cases such as:
-				 * var obj = function() {this.length = 0;};
-				 * obj.prototype = {length: 0};
-				 * $.hasProp(new obj(),"length"); //Returns false
-				 * Use of custom extend method required
-				 */
-				noProto = objNoProto(obj,proto);
-			if (obj[prop] !== undefined) return noProto[prop] !== undefined;
-			return false;
-		},
 		$wrap = function(elements) { //Create a wrapper object for our elements; that way, lower our load time by 5x+ times
 			elements = elements || [];
 			var i = 0,
@@ -678,20 +666,6 @@
 		bugs.css.opacity = !/0\.5/.test(divCSS.opacity);
 		bugs.css.$float = divCSS.cssFloat !== "left";
 		div = divCSS = null; //Prevent memory leaks
-		/* Does the browser support
-		 * native .hasOwnProperty()?
-		 */
-		try {
-			has = ({0: 0}).hasOwnProperty(0);
-			bugs.obj.hasOwnProperty = !has;
-		} catch(e) {
-			bugs.obj.hasOwnProperty = true;
-		}
-		//Check if we can query prototypes of objects is a simpler way
-		object = function() {};
-		object.prototype = {};
-		if ((Object.getPrototypeOf ? !Object.getPrototypeOf(object) : true) && !new object().__proto__) bugs.obj.proto = true;
-		object = object.prototype = undefined;
 		/* Attribute methods
 		 * Commonly found bugs in older browsers
 		 */
@@ -747,10 +721,8 @@
 			bugs.script.read = (script.innerText || script.textContent) !== "\"test\";";
 		} catch(e) {
 			bugs.script.read = true;
-		} finally {
-			script = null; //Release memory
 		}
-		div = null; //Release memory
+		script = div = null; //Release memory
 	})();
 	if (bugs.attr.$boolean) {
 		filterBool = function(val,orig) {
@@ -766,7 +738,7 @@
 	var createCustomBubble = function(event,node,callback) {
 			return function(node,callback) {
 				node.attachEvent(event,function(obj,triggered) {
-					var value = callback.call(node);
+					var value = callback.call(node,obj);
 					//If the event is triggered, do not bubble
 					if (!triggered) {
 						while ((node = node.parentNode)) mScript(node).trigger(event);
@@ -790,13 +762,24 @@
 	 ** And if there is a match and it equals the value of the current object, it returns false
 	 ** If prototype's method matches value of object's method, the function still returns true (after reliable checks)
 	 */
-	mScript.hasProp = !bugs.obj.hasOwnProperty ? function(obj,prop) { //Cross browser Object.hasOwnProperty
-		try {
-			return objOrFunct(obj) && typeof prop === "string" && obj.hasOwnProperty(prop); //For browsers that have native obj.hasOwnProperty
-		} catch(e) {
-			return customHasProp(obj,prop);
-		}
-	} : customHasProp;
+	mScript.hasProp = coreHasOwn ? function(obj,prop) { //Cross browser .hasOwnProperty()
+		return coreHasOwn.call(obj,prop);
+	} : function(obj,prop) {
+		if (!objOrFunct(obj)) return false;
+		//Get all objects inside our object
+		var proto = getProtoOf(obj),
+			/* Gets object with prototype
+			 * In turn, this prevents the following bug:
+			 * Will mess up for cases such as:
+			 * var obj = function() {this.length = 0;};
+			 * obj.prototype = {length: 0};
+			 * $.hasProp(new obj(),"length"); //Returns false
+			 * Use of custom extend method required
+			 */
+			noProto = objNoProto(obj,proto);
+		if (obj[prop] !== undefined) return noProto[prop] !== undefined;
+		return false;
+	};
 	mScript.extend = function(obj,extend) { //Extending objects
 		if (!objOrFunct(obj)) mScript.error(".extend() called on non-object.");
 		var arglen = arguments.length,
@@ -855,7 +838,9 @@
 		indexOf: function(obj,val) {
 			if (obj && typeof obj.length === "number") { //For arrays
 				if (indexOf) return indexOf.call(obj,val); //Use ECMAScript 5 method if available
-				for (var i = 0; i < obj.length; i++) {
+				var i = 0,
+					len = obj.length;
+				for (; i < len; i++) {
 					if (val === obj[i]) return i; //Return index
 				}
 				return -1; //Not found is -1
@@ -1879,7 +1864,7 @@
 				for (; i < len; i++) { //Loop through all elements
 					if (this[i].nodeType === 1) { //Limit to elements only
 						className = (" " + (this[i].className || "") + " ").replace(whiteButNotSpace,"");
-						if (className.indexOf(_cssClass) === -1) this[i].className = ((this[i].className || "") + " " + cssClass).replace(initSpace,"").replace(endSpace,"").replace(moreThanOneSpace," "); //If element doesn't have that class already, add it
+						if (className.indexOf(_cssClass) === -1) this[i].className = ((this[i].className || "") + " " + cssClass).replace(rtrim,"").replace(moreThanOneSpace," "); //If element doesn't have that class already, add it
 					}
 				}
 				return this; //Return mScript
@@ -1894,7 +1879,7 @@
 						clen = classes.length;
 						for (ii = 0; ii < clen; ii++) {
 							classes[ii] = classes[ii].replace(whiteButNotSpace," ");
-							while (classes[ii].indexOf(cssClass) > -1) classes[ii] = classes[ii].replace(cssClass," ").replace(initSpace,"").replace(endSpace,"").replace(moreThanOneSpace," ");
+							while (classes[ii].indexOf(cssClass) > -1) classes[ii] = classes[ii].replace(cssClass," ").replace(rtrim,"").replace(moreThanOneSpace," ");
 						}
 						this[i].className = classes.join(" ").replace(endSpace,"");
 						//If attribute is only spaces (or empty), remove it completely
@@ -1988,7 +1973,7 @@
 				return new $wrap(mScript.slice(this[0] && this[0].nodeType ? this : this[0] ? this[0] : [],i,ii));
 			},
 			get: function(a,b) {
-				return a === undefined && b === undefined ? this.toArray() : this.slice(a,b);
+				return typeof a !== "number" ? this.toArray() : mScript.slice(this[0] && this[0].nodeType ? this : this[0] ? this[0] : [],i,ii);
 			},
 			/* Internal usage only
 			 * .splice()
@@ -2535,7 +2520,7 @@
 	$wrap.prototype = mScript.core;
 	$document = mScript(document); //Reference to $(document)
 	$e = mScript.events(); //Reference to an mScript.events instance
-	/*! mSelect v.1.2
+	/*! mSelect v.1.2.1
 	 * The mScript CSS Selector Engine
 	 * By Matey Yanakiev
 	 * Released under MIT License
@@ -2769,7 +2754,7 @@
 				}
 				return results;
 			},
-			/* .getInnerText()
+			/* getInnerText()
 			 * Getting innerText/textContent by getting childrens' node values
 			 * Inspired by Sizzle
 			 */
@@ -3700,7 +3685,7 @@
 			if (type === "object" || type === "function") {
 				proto = getProtoOf(name); //Cross-browser replacement for .hasOwnProperty()
 				for (prop in name) {
-					if (typeof name[prop] === "function" && name[prop] !== proto[prop]) pseudos[prop.toLowerCase()] = name[prop];
+					if (typeof name[prop] === "function" && (!proto || name[prop] !== proto[prop])) pseudos[prop.toLowerCase()] = name[prop];
 				}
 			}
 			if (typeof callback === "function") pseudos[name.toLowerCase()] = callback;
@@ -3800,12 +3785,20 @@
 	})();
 	//DOMReady bugs tests:
 	$document.ready(function() {
+		if (!window.getComputedStyle) return;
 		//Does getComputedStyle return percents?
 		var div = document.createElement("div"),
-			body = document.body;
+			margin = document.createElement("div"),
+			body = document.body,
+			style = div.style,
+			mstyle = margin.style;
 		body.insertBefore(div,body.firstChild);
-		div.style.cssText = ";width:1%;";
+		style.width = "1%";
 		bugs.css.computedPercent = window.getComputedStyle && /%$/.test(window.getComputedStyle(div,null).width || "");
+		mstyle.width = mstyle.marginRight = "0px";
+		style.width = "1px";
+		div.appendChild(margin);
+		bugs.css.marginRightComputed = !!parseFloat((window.getComputedStyle(margin) || {}).marginRight);
 		body.removeChild(div);
 		div = null; //Release memory
 	});
