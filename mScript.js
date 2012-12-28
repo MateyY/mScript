@@ -108,7 +108,22 @@
 		marginRight = /^(?:margin-?[rR]ight)$/,
 		getStyle = function(element,prop,type) { //Make a seperate function, so that we can use it on two functions
 			var value,body,docElm,computed,isDoc,isWindow;
-			if (!element || !element.style && !(isDoc = element === document) && !(isWindow = window === element.window)) return null;
+			if (!element || !element.style && !(isDoc = element.nodeType === 9) && !(isWindow = window == element.window)) return null;
+			//Getting the width/height of the document and/or window is a little different
+			if (isDoc || isWindow) {
+				docElm = document.documentElement;
+				body = document.body;
+				//We can only get height and width
+				if (prop !== "height" && prop !== "width") return null;
+				if (isDoc) { //Document
+					if (prop === "height") value = mScript.math.max(body.scrollHeight,body.offsetHeight,docElm.clientHeight,docElm.scrollHeight,docElm.offsetHeight);
+					else value = mScript.math.min(body.scrollWidth,body.offsetWidth,docElm.clientWidth,docElm.scrollWidth,docElm.offsetWidth);
+				} else { //Window
+					if (prop === "height") value = window.innerHeight || mScript.math.max(docElm.clientHeight,body.clientHeight);
+					else value = window.innerWidth || mScript.math.min(docElm.clientWidth,body.clientWidth);
+				}
+				return type ? value : value + "px";
+			}
 			if (!window.getComputedStyle) { //If we are in IE8 and before, we can still get some properties
 				if (prop === "height") value = element.offsetHeight; //Height
 				else if (prop === "width") value = element.offsetWidth; //Width
@@ -119,30 +134,19 @@
 					return typeof value !== "undefined" ? value : null;
 				}
 			} else { //Otherwise
-				//Getting the width/height of the document and/or window is a little different
-				if (isDoc || isWindow) {
-					docElm = document.documentElement;
-					body = document.body;
-					if (prop === "height") value = mScript.math.max(body.scrollHeight,body.offsetHeight,docElm.clientHeight,docElm.scrollHeight,docElm.offsetHeight);
-					else if (prop === "width") value = mScript.math.max(body.scrollWidth,body.offsetWidth,docElm.clientWidth,docElm.scrollWidth,docElm.offsetWidth);
-					else return null; //We can't get any other values
+				if (marginRight.test(prop) && bugs.css.marginRightComputed) { //Some versions of webkit return unreliable right margin
+					var style = element.style,
+						olddisplay = style.display || getStyle(element,"display");
+					style.display = "inline-block";
+					value = (window.getComputedStyle(element,null) || {}).marginRight;
+					style.display = olddisplay;
+					return type ? mScript.strToFloat(value) : value;
 				}
-				if (value === undefined) {
-					if (prop.test(marginRight) && bugs.css.marginRightComputed) { //Some versions of webkit return unreliable right margin
-						var style = element.style,
-							olddisplay = style.display || getStyle(element,"display");
-						style.display = "inline-block";
-						value = (window.getComputedStyle(element,null) || {}).marginRight;
-						style.display = olddisplay;
-						return type ? mScript.strToFloat(value) : value;
-					}
-					computed = window.getComputedStyle(element,null);
-					if (!computed) return null;
-					//Percent bug can be fixed with width and height
-					if (bugs.css.computedPercent && element.parentNode && (prop === "width" || prop === "height")) value = element.parentNode.offsetWidth * (parseFloat(computed[prop]) / 100);
-					else value = prop === "filter" ? computed.getPropertyValue(prop) : computed[prop]; //From jQuery: .getPropertyValue() needs to be used for "filter" in IE9
-				}
-				if ((prop === "width" || prop === "height") && typeof value === "number") return type ? mScript.strToFloat(value) : cssUnits.test(value) ? value : value + "px";
+				computed = window.getComputedStyle(element,null);
+				if (!computed) return null;
+				//Percent bug can be fixed with width and height
+				if (bugs.css.computedPercent && element.parentNode && (prop === "width" || prop === "height")) value = element.parentNode.offsetWidth * (parseFloat(computed[prop]) / 100);
+				else value = prop === "filter" ? computed.getPropertyValue(prop) : computed[prop]; //From jQuery: .getPropertyValue() needs to be used for "filter" in IE9
 				if (type && typeof value === "string") return mScript.strToFloat(value);
 				return value !== undefined ? value : null;
 			}
