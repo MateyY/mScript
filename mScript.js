@@ -2517,7 +2517,7 @@
 	$wrap.prototype = mScript.core;
 	$document = mScript(document); //Reference to $(document)
 	$e = mScript.events(); //Reference to an mScript.events instance
-	/*! mSelect v.1.2.1
+	/*! mSelect v.1.2.2
 	 * The mScript CSS Selector Engine
 	 * By Matey Yanakiev
 	 * Released under MIT License
@@ -3602,7 +3602,7 @@
 				} catch(e) {}
 			}
 			buggyQuery = new RegExp(buggyQuery.join("|"));
-			if (buggyMatches.length) buggyMatches = new RegExp(buggyMatches.join("|"));
+			buggyMatches = buggyMatches.length ? new RegExp(buggyMatches.join("|")) : null;
 			div = null;
 		})();
 		//Check from Sizzle:
@@ -3723,6 +3723,15 @@
 		mSelect.not = function(selector,elm) { //Check if an element doesn't match a selector
 			return !!(elm && selector) && !mSelect.is(selector,elm);
 		};
+		mSelect.matches = function(selector,elm) {
+			if (!elm || !selector) return false;
+			var parent;
+			if ((parent = elm.parentNode)) return indexOf.call(mSelect(selector,parent),elm) > -1;
+			var div = elm.ownerDocument.createElement("div"),
+				newElm = elm.cloneNode(true);
+			div.appendChild(newElm);
+			return indexOf.call(mSelect(selector,div),newElm) > -1;
+		};
 		//Still being developed:
 		mSelect.filter = function(selector,arr) { //Filtering an array:
 			var type = typeof arr,
@@ -3749,8 +3758,9 @@
 		mScript.is = mSelect.is;
 		mScript.not = mSelect.not;
 		mScript.contains = mSelect.contains;
+		mScript.matches = mSelect.matches;
 	})(this || window);
-	mScript.each(["is","not"],function() {
+	mScript.each(["is","not","matches"],function() {
 		var method = mScript[this];
 		mScript.core[this] = function(selector) {
 			return method(selector,this[0]);
@@ -3761,7 +3771,7 @@
 			parent = this[0],
 			i = 0,
 			len = elm.length;
-		elm = typeof elm === "string" ? mScript.cssSelector(elm) : [elm];
+		elm = typeof elm === "string" ? mScript.cssSelector(elm,parent) : [elm];
 		for (; i < len; i++) {
 			if (contains(parent,elm[i])) return true;
 		}
