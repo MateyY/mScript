@@ -1,4 +1,4 @@
-/*! mSelect v.1.2.1
+/*! mSelect v.1.2.2
  * The mScript CSS Selector Engine
  * By Matey Yanakiev
  * Released under MIT License
@@ -1083,7 +1083,7 @@
 			} catch(e) {}
 		}
 		buggyQuery = new RegExp(buggyQuery.join("|"));
-		if (buggyMatches.length) buggyMatches = new RegExp(buggyMatches.join("|"));
+		buggyMatches = buggyMatches.length ? new RegExp(buggyMatches.join("|")) : null;
 		div = null;
 	})();
 	//Check from Sizzle:
@@ -1203,6 +1203,15 @@
 	};
 	mSelect.not = function(selector,elm) { //Check if an element doesn't match a selector
 		return !!(elm && selector) && !mSelect.is(selector,elm);
+	};
+	mSelect.matches = function(selector,elm) {
+		if (!elm || !selector) return false;
+		var parent;
+		if ((parent = elm.parentNode)) return indexOf.call(mSelect(selector,parent),elm) > -1;
+		var div = elm.ownerDocument.createElement("div"),
+			newElm = elm.cloneNode(true);
+		div.appendChild(newElm);
+		return indexOf.call(mSelect(selector,div),newElm) > -1;
 	};
 	//Still being developed:
 	mSelect.filter = function(selector,arr) { //Filtering an array:
