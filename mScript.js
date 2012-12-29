@@ -645,10 +645,10 @@
 	toClass["[object RegExp]"] = "RegExp"; //Camel-case for RegExp
 	classes = i = len = undefined;
 	(function() { //Bug detection:
-		var div,children,input,has,select,object,script; //Declare variables
-		div = document.createElement("div"); //Create a dummy <div>
-		var divCSS = div.style; //Quick access to the dummy <div>'s style
-		try { //IE may throw exception
+		var div = document.createElement("div"), //Create a dummy <div>
+			divCSS = div.style, //Quick access to the dummy <div>'s style
+			children,input,has,select,object,script;
+		try { //IE throws exception
 			//Add CSS gradient properties
 			divCSS.backgroundImage = "linear-gradient(left top, black, white)";
 			divCSS.backgroundImage = "-o-linear-gradient(left top, black, white)";
@@ -657,43 +657,36 @@
 			divCSS.backgroundImage = "-ms-linear-gradient(left top, black, white)";
 			divCSS.backgroundImage = "-webkit-gradient(linear, left top, right bottom, from(black), to(white))";
 			//Check if browser can read them
-			bugs.css.gradient = divCSS.backgroundImage.indexOf("gradient") === -1; //Return accordingly
+			bugs.css.gradient = divCSS.backgroundImage.indexOf("gradient") === -1;
 		} catch(e) {
 			bugs.css.gradient = true;
 		}
 		//We can run more tests with this one <div>
 		//Do float and opacity tests
 		//Use .cssText, because bug will not be detected with divCSS.opacity
-		divCSS.cssText += "opacity:0.5;float:left;";
-		//If we have a "bug" (although with a very simple solution)
-		//Use IE's non-standard filters
+		divCSS.cssText += ";opacity:0.5;float:left;";
+		//If we have a bug, use IE's non-standard filters
 		bugs.css.opacity = !/0\.5/.test(divCSS.opacity);
 		bugs.css.$float = divCSS.cssFloat !== "left";
-		div = divCSS = null; //Prevent memory leaks
+		div = null; //Prevent memory leaks
 		/* Attribute methods
 		 * Commonly found bugs in older browsers
 		 */
 		div = document.createElement("div");
-		//Are the methods even available
-		bugs.attr.getAttr = !div.getAttribute;
-		bugs.attr.setAttr = !div.setAttribute;
-		bugs.attr.removeAttr = !div.removeAttribute;
 		div.className = "divClass";
 		//Create a test input
 		input = document.createElement("input");
 		input.type = "text";
 		//IE uses property names:
 		//If class doesn't work, we infer that for won't work either
-		bugs.attr.propVsAttr = !bugs.attr.getAttr ? !div.getAttribute("class") : true;
+		bugs.attr.propVsAttr = !div.getAttribute("class");
 		//Opera mixes up its style querying
 		//However, that requires elements be inserted into DOM to test
 		input.disabled = "disabled"; //Disable input
 		//IE may return boolean values
-		bugs.attr.$boolean = !bugs.attr.getAttr ? input.getAttribute("disabled") === true : true;
-		//.removeAttribute() also doesn't work correctly on the style object
-		bugs.attr.removeStyle = !bugs.attr.removeAttr && !bugs.attr.getAttr ? !!(div.removeAttribute("style") && div.getAttribute("style")) : true;
+		bugs.attr.$boolean = input.getAttribute("disabled") === true;
 		div = input = null; //Prevent memory leaks
-		/* Events supported?
+		/* Is event bubbling supported?
 		 * Techinque by Juriy Zaytsev
 		 * http://perfectionkills.com/detecting-event-support-without-browser-sniffing/
 		 * Test if IE supports some of the problematic event handlers
@@ -735,7 +728,7 @@
 			return val || null;
 		};
 	}
-	/* Create a custom bubbling event
+	/* Create a custom bubble
 	 * Adds event to element
 	 * Then triggers all events of the parent nodes (added with mScript)
 	 */
