@@ -1,4 +1,4 @@
-/*! mScript v.1.1.2
+/*! mScript v.1.1.3
  * A JavaScript Library
  * By Matey Yanakiev
  * Released under MIT License
@@ -20,16 +20,18 @@
 		dateDays = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"],
 		coreTrim = String.prototype.trim, //Core "".trim (if available)
 		coreHasOwn = Object.prototype.hasOwnProperty, //.hasOwnProperty()
-		mScript = function(element,create) {
+		mScript = function(element,extra) {
 			var elements = [],
-				type;
+				type = typeof element;
 			if (element) {
-				if (create === true) elements.push(document.createElement(element)); //Add element; this is when we empty our array
-				else {
-					//$(document.body), $(this), etc. will work; idea from jQuery
-					//Also for $(object) and $(function)
-					if (element.nodeType || (type = typeof element) === "object" || type === "function") elements.push(element);
-					else if (type === "string") elements = mScript.cssSelector(element,create);
+				if (extra === true) {
+					if (type === "string") elements.push(document.createElement(element)); //Add element; this is when we empty our array
+					//$([node1,node2],true) is like $([node1,node2]).extract()
+					else elements = element;
+				} else {
+					//$(node), $(object), and $(function)
+					if (type === "object" || type === "function") elements.push(element);
+					else if (type === "string") elements = mScript.cssSelector(element,extra);
 				}
 			}
 			return new $wrap(elements); //Return mScript to enable chaining
@@ -306,32 +308,29 @@
 				fragment = document.createDocumentFragment(),
 				oldParent = elm.parentNode,
 				children = elm.childNodes,
-				events = [],
+				events = {},
 				ii,_attrs,attributes,currAttr,currName;
 			if ((attributes = elm.attributes).length) {
 				for (ii = 0; ii < attributes.length; ii++) {
 					currAttr = attributes[ii];
 					currName = currAttr.nodeName;
-					if (eventAttr.test(currName)) events.push({
-						type: currName,
-						handler: new Function(currAttr.nodeValue)
-					});
+					if (eventAttr.test(currName)) events[currName] = new Function(currAttr.nodeValue);
 					else attrs[currName] = (getAttr(elm,currName,true) || ""); //Element is always an XML element
 				}
 			}
-			if (children && children.length) {
-				for (ii = 0; ii < children.length; ii++) {
-					try { //IE throws exceptions:
-						fragment.appendChild(toHTML(children[ii]));
-					} catch(e) {}
-				}
+			for (ii = 0; ii < children.length; ii++) {
+				try { //IE throws exceptions:
+					fragment.appendChild(toHTML(children[ii]));
+				} catch(e) {}
 			}
 			elm = document.createElement(nodeName(elm));
 			for (ii in attrs) {
 				if (mScript.hasProp(attrs,ii)) setAttr(elm,attrs[ii],ii);
 			}
 			//Handle inline events
-			for (ii = 0; ii < events.length; ii++) elm[events[i].type] = events[i].handler || null;
+			for (ii in events) {
+				if (mScript.hasProp(events,ii)) elm[ii] = events[ii];
+			}
 			try { //IE may throw exception here:
 				elm.appendChild(fragment);
 			} catch(e) {}
