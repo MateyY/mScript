@@ -49,7 +49,7 @@
 			for (; i < len; i++) type === "before" ? parent[0].parentNode.insertBefore(element[i],parent[0]) : parent[0].nextSibling ? parent[0].parentNode.insertBefore(element[i],parent[0].nextSibling) : (parent[0].parentNode !== document ? parent[0].parentNode : parent[0]).appendChild(element[i]);
 		},
 		//Match unescaped !important rules
-		importantRule = /(?:^!|[^\\]!)[\s\f\t\r\n\x20]*important/,
+		importantRule = /(?:^!|[^\\]!)[\s\f\t\r\n\x20]*important/m,
 		addStyle = function(element,prop,val) { //Quick way to add a style to an element
 			prop = prop === "float" ? !bugs.css.$float ? "cssFloat" : "styleFloat" : prop;
 			var cProp = mScript.toCamelCase(prop),
@@ -81,16 +81,17 @@
 			return (letter + "").toUpperCase();
 		},
 		filterOpacity = /alpha\(opacity=([\d\.]+)\)/i, //Match filter: alpha(opactiy=val)
-		msFilterOpacity = /\-ms\-filter:[\s\f\t\r\n\x20]*["']?progid:[\s\f\t\r\n\x20]*DXImageTransform\.Microsoft\.Alpha\(Opacity=([\d\.]+)\)["']?;?/i, //Match -ms-filter for opacity
+		msFilterOpacity = /\-ms\-filter:[\s\f\t\r\n\x20]*["']?progid:[\s\f\t\r\n\x20]*DXImageTransform\.Microsoft\.Alpha\(Opacity=([\d\.]+)\)["']?;?/im, //Match -ms-filter for opacity
 		//Event RegExp:
 		rhover = /hover/g, //Hover (globally)
 		ractive = /mousedown/g, //Mousedown (globally)
 		spaces = /\s/g, //Spaces (globally)
 		whitespace = /[\s\f\t\r\n\x20]/gm,
+		whitespacesrc = whitespace.source,
 		//For .on() and .end()
 		eready = /ready/g,
-		removeready = new RegExp("(?:" + whitespace.source + "|,)*ready,?","gm"),
-		espaces = /[\s\n\r\t]/g,
+		removeready = new RegExp("(?:" + whitespacesrc + "|,)*ready,?","gm"),
+		removeload = new RegExp("(?:" + whitespacesrc + "|,)*load,?","gm"),
 		eload = /load/g,
 		rTrue = function() {
 			return true;
@@ -100,8 +101,6 @@
 		},
 		//Properties for .eventHolder() not to let in
 		limitProp = /^(?:type|event|isDefaultPrevented|timeStamp|x|y|target|preventDefault|stop(?:Immediate)?Propagation|isDefaultPrevented|is(?:Immediate)?PropagationStopped)$/,
-		removeload = new RegExp("(?:" + whitespace.source + "|,)*load,?","gm"),
-		comma = /,/g,
 		trailingComma = /,$/, //Trailing comma
 		cssUnits = /(?:px|pc|pt|ex|em|mm|cm|in|%)$/, //RegExp to match CSS units
 		pxs = /px$/, //Match strings that end with px
