@@ -172,16 +172,16 @@
 		},
 		slice = (function() { //Safe slice (needs to be indirectly called: slice.call() or slice.apply())
 			try {
-				var arr = [];
+				var slice = [].slice;
 				//Can we use slice (if defined) on node lists?
-				arr.slice.call(document.documentElement.childNodes,0,2)[0].nodeType;
+				slice.call(document.documentElement.childNodes,0,2)[0].nodeType;
 				//If so, use native function
-				return arr.slice;
+				return slice;
 			} catch(e) { //Else, use custom function
 				return function(i,ii) {
 					var arr = [],
 						len = this.length;
-					if (typeof ii !== "number") ii = len;
+					if (isNaN(ii)) ii = len;
 					i = i || 0;
 					for (; i < len && i < ii; i++) arr.push(this[i]);
 					return arr;
@@ -200,8 +200,6 @@
 			for (; i < events.length; i++) DOMEventsReplace[events[i].toLowerCase()] = events[i];
 			return DOMEventsReplace;
 		})(),
-		//RegExp that matches these events
-		rDOMEvents = new RegExp("^" + DOMEvents + "$","i"),
 		camelCase = /-([a-z])/gi, //Matching camelCase
 		passToReady = function(callback) { //Passes function to .ready() list of events
 			var exec = false; //We haven't executed our function yet
@@ -1356,7 +1354,7 @@
 						} else if (this[i].attachEvent) { //For IE
 							for (ii = 0; ii < event.length; ii++) {
 								//DOM events case-insensitivity
-								if (rDOMEvents.test(event[ii])) event[ii] = DOMEventsReplace[event[ii]];
+								event[ii] = DOMEventsReplace[event[ii]] || event[ii];
 								$e.add(event[ii],!needsCustomBubble(event[ii]) ? callback : bubble[event[ii]](this[i],callback),this[i]);
 								needsKeyTreatment(this[i],event[ii]) ? document.attachEvent("on" + event[ii],$e.get(event[ii],callback,this[i],true)) : this[i].attachEvent("on" + event[ii],$e.get(event[ii],callback,this[i],true)); //Loop through all events and add them
 							}
