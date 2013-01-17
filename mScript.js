@@ -1,4 +1,4 @@
-/*! mScript v.1.1.3
+/*! mScript v.1.2
  * A JavaScript Library
  * By Matey Yanakiev
  * Released under MIT License
@@ -53,7 +53,7 @@
 		//Match unescaped !important rules
 		importantRule = /(?:^!|[^\\]!)[\s\f\t\r\n\x20]*important/m,
 		addStyle = function(element,prop,val) { //Quick way to add a style to an element
-			prop = prop === "float" ? !bugs.css.$float ? "cssFloat" : "styleFloat" : prop;
+			prop = prop === "float" ? !bugs.cssFloat ? "cssFloat" : "styleFloat" : prop;
 			var cProp = mScript.toCamelCase(prop),
 				style = element.style,
 				notDefined;
@@ -107,10 +107,22 @@
 		cssUnits = /(?:px|pc|pt|ex|em|mm|cm|in|%)$/, //RegExp to match CSS units
 		pxs = /px$/, //Match strings that end with px
 		marginRight = /^(?:margin-?[rR]ight)$/,
-		getStyle = function(element,prop,type) { //Make a seperate function, so that we can use it on two functions
-			var value,body,docElm,computed,isDoc,isWindow;
-			if (!element || !element.style && !(isDoc = element.nodeType === 9) && !(isWindow = window == element.window)) return null;
-			//Getting the width/height of the document and/or window is a little different
+		getStyle = function(element,prop,type) {
+			var isWindow,isDoc,len,computed,currProp
+				i = 0,
+				result = {};
+			if (!element || !prop || !element.style && !(isDoc = element.nodeType === 9) && !(isWindow = window == element.window)) return null;
+			computed = window.getComputedStyle && window.getComputedStyle(element,null);
+			if ((len = prop.length)) {
+				for (; i < len; i++) {
+					if (typeof (currProp = prop[i]) === "string") result[currProp] = returnStyleValue(element,currProp,type,computed,isDoc,isWindow);
+				}
+				return result;
+			}
+			return returnStyleValue(element,prop,type,computed,isDoc,isWindow);
+		},
+		returnStyleValue = function(element,prop,type,computed,isDoc,isWindow) { //Make a seperate function, so that we can use it on two functions
+			var value,body,docElm;
 			if (isDoc || isWindow) {
 				docElm = document.documentElement;
 				body = document.body;
@@ -125,7 +137,7 @@
 				}
 				return type ? value : value + "px";
 			}
-			if (!window.getComputedStyle) { //If we are in IE8 and before, we can still get some properties
+			if (!computed) { //If we are in IE8 and before, we can still get some properties
 				if (prop === "height") value = element.offsetHeight; //Height
 				else if (prop === "width") value = element.offsetWidth; //Width
 				else if (element.currentStyle) { //Else, use currentStyle
@@ -134,8 +146,9 @@
 					//If we're looking for a string, or we cannot get a number
 					return typeof value !== "undefined" ? value : null;
 				}
+				return null;
 			} else { //Otherwise
-				if (marginRight.test(prop) && bugs.css.marginRightComputed) { //Some versions of webkit return unreliable right margin
+				if (marginRight.test(prop) && bugs.marginRightComputed) { //Some versions of webkit return unreliable right margin
 					var style = element.style,
 						olddisplay = style.display || getStyle(element,"display");
 					style.display = "inline-block";
@@ -143,10 +156,9 @@
 					style.display = olddisplay;
 					return type ? mScript.strToFloat(value) : value;
 				}
-				computed = window.getComputedStyle(element,null);
 				if (!computed) return null;
 				//Percent bug can be fixed with width and height
-				if (bugs.css.computedPercent && element.parentNode && (prop === "width" || prop === "height")) value = element.parentNode.offsetWidth * (parseFloat(computed[prop]) / 100);
+				if (bugs.computedPercent && element.parentNode && (prop === "width" || prop === "height")) value = element.parentNode.offsetWidth * (parseFloat(computed[prop]) / 100);
 				else value = prop === "filter" ? computed.getPropertyValue(prop) : computed[prop]; //From jQuery: .getPropertyValue() needs to be used for "filter" in IE9
 				if (type && typeof value === "string") return mScript.strToFloat(value);
 				return value !== undefined ? value : null;
@@ -212,7 +224,7 @@
 					document.removeEventListener("DOMContentLoaded",whenReady,false); //DOMContentLoaded
 					window.removeEventListener("load",whenReady,false); //And fallback
 				} else {
-					document.detachEvent("onreadystatechange",callWhenReady,false); //Check on readystatechange event
+					document.detachEvent("onreadystatechange",callWhenReady,false); //Check readystatechange event
 					document.detachEvent("onload",whenReady,false); //Fallback
 				}
 			}
@@ -343,24 +355,14 @@
 			 * computedPercent (tested on DOMReady, so default is false)
 			 * marginRightComputed (tested on DOMReady, so default is false)
 			 */
-			css: {
-				computedPercent: false,
-				marginRightComputed: false
-			},
-			/* Multiple bugs related to:
-			 ** .getAttribute()
-			 ** .setAttribute()
-			 ** .removeAttribute()
-			 * Handled below
-			 */
-			attr: {},
+			computedPercent: false,
+			marginRightComputed: false,
 			//Event-related bugs
 			events: { //Since we are only setting them for IE, use default of false
 				submit: false,
 				focusin: false,
 				change: false
-			},
-			script: {}
+			}
 		},
 		xmlActiveXVersion = window.ActiveXObject && (function() { //Supported ActiveXObject version for XML parsing
 			//Do not check for specific support, as that would be too slow
@@ -468,23 +470,23 @@
 		 */
 		getAttr = function(element,attr,isXML) { //Safe way to get an element property
 			if (!isXML) { //HTML elements:
-				if (element.getAttribute && !bugs.attr.propVsAttr) {
+				if (attr === "style") return element.style.cssText.toLowerCase();
+				if (element.getAttribute && !bugs.propVsAttr) {
 					//For attribute fixes
 					attr = attrFix[attr] || attr;
 					//Second argument === case-insensitivity in IE
 					//We are returning the cssText without .getAttribute(), as that is the easiest way
-					return filterBool(attr === "style" ? element.style.cssText : element.getAttribute(attr,0),attr);
-				} else {
-					//For attribute problems
-					attr = attrFix[attr] || forAndClass[attr] || attr;
-					//Handle style differently
-					return filterBool(attr === "style" ? element.style.cssText : attr !== "value" && typeof element[attr] !== "undefined" ? element[attr] : getUnknownAttr(element,attr),attr);
+					return filterBool(element.getAttribute(attr,0),attr);
 				}
+				//For attribute problems
+				attr = attrFix[attr] || forAndClass[attr] || attr;
+				//Handle style differently
+				return filterBool(getUnknownAttr(element,attr),attr);
 			} else { //XML elements
 				var attrs = element.attributes,
 					i = 0,
 					len = attrs.length;
-				//We attributes them differently:
+				//We get attributes differently:
 				if (attrs) {
 					for (; i < len; i++) {
 						if (attrs[i].nodeName.toLowerCase() === attr) return attrs[i].nodeValue;
@@ -499,7 +501,7 @@
 				//Disallow the changing of the type attribute of <input>s and <button>s
 				if (attr === "type" && inputbutton.test(element.nodeName) && element.parentNode) mScript.error("Type property of inputs and buttons cannot be changed.");
 				if (boolAttr.test(attr) && val !== attr) mScript.error("Property " + attr + " cannot be set the value of " + val);
-				else if (element.setAttribute && !bugs.attr.propVsAttr) {
+				else if (element.setAttribute && !bugs.propVsAttr) {
 					//For attribute problems
 					attr = attrFix[attr] || attr;
 					//Third argument === case-insensitivity in IE
@@ -534,7 +536,7 @@
 		},
 		removeAttr = function(element,attr,isXML) {
 			if (!isXML) { //HTML elements:
-				if (element.removeAttribute && !bugs.attr.propVsAttr) {
+				if (element.removeAttribute && !bugs.propVsAttr) {
 					//For attribute problems
 					//Notice that this time style refers to the attribute, and we aren't using .cssText
 					attr = attrFix[attr] || attr;
@@ -644,26 +646,13 @@
 		var div = document.createElement("div"), //Create a dummy <div>
 			divCSS = div.style, //Quick access to the dummy <div>'s style
 			children,input,has,select,object,script;
-		try { //IE throws exception
-			//Add CSS gradient properties
-			divCSS.backgroundImage = "linear-gradient(left top, black, white)";
-			divCSS.backgroundImage = "-o-linear-gradient(left top, black, white)";
-			divCSS.backgroundImage = "-moz-linear-gradient(left top, black, white)";
-			divCSS.backgroundImage = "-webkit-linear-gradient(left top, black, white)";
-			divCSS.backgroundImage = "-ms-linear-gradient(left top, black, white)";
-			divCSS.backgroundImage = "-webkit-gradient(linear, left top, right bottom, from(black), to(white))";
-			//Check if browser can read them
-			bugs.css.gradient = divCSS.backgroundImage.indexOf("gradient") === -1;
-		} catch(e) {
-			bugs.css.gradient = true;
-		}
 		//We can run more tests with this one <div>
 		//Do float and opacity tests
 		//Use .cssText, because bug will not be detected with divCSS.opacity
 		divCSS.cssText += ";opacity:0.5;float:left;";
 		//If we have a bug, use IE's non-standard filters
-		bugs.css.opacity = !/0\.5/.test(divCSS.opacity);
-		bugs.css.$float = divCSS.cssFloat !== "left";
+		bugs.cssOpacity = !/0\.5/.test(divCSS.opacity);
+		bugs.cssFloat = divCSS.cssFloat !== "left";
 		div = null; //Prevent memory leaks
 		/* Attribute methods
 		 * Commonly found bugs in older browsers
@@ -675,12 +664,12 @@
 		input.type = "text";
 		//IE uses property names:
 		//If class doesn't work, we infer that for won't work either
-		bugs.attr.propVsAttr = !div.getAttribute("class");
+		bugs.propVsAttr = !div.getAttribute("class");
 		//Opera mixes up its style querying
 		//However, that requires elements be inserted into DOM to test
 		input.disabled = "disabled"; //Disable input
 		//IE may return boolean values
-		bugs.attr.$boolean = input.getAttribute("disabled") === true;
+		bugs.attrBoolean = input.getAttribute("disabled") === true;
 		div = input = null; //Prevent memory leaks
 		/* Is event bubbling supported?
 		 * Techinque by Juriy Zaytsev
@@ -711,13 +700,13 @@
 		try {
 			script = document.createElement("script");
 			script.innerHTML = "\"test\";";
-			bugs.script.read = (script.innerText || script.textContent) !== "\"test\";";
+			bugs.readScript = (script.innerText || script.textContent) !== "\"test\";";
 		} catch(e) {
-			bugs.script.read = true;
+			bugs.readScript = true;
 		}
 		script = div = null; //Release memory
 	})();
-	if (bugs.attr.$boolean) {
+	if (bugs.attrBoolean) {
 		filterBool = function(val,orig) {
 			//If we are working with a boolean attribute, filter it
 			if (boolAttr.test(orig)) return val === true ? orig : null;
@@ -1025,7 +1014,7 @@
 			//Single tag
 			if (isStr && (html = val.match(allSelfClose))) return [document.createElement(html[1])];
 			//IE can't read <script> tags' contents
-			if (isStr && (evalScript ? !bugs.script.read : true) && !skip) {
+			if (isStr && (evalScript ? !bugs.readScript : true) && !skip) {
 				//Try using .innerHTML
 				//Much faster, but doesn't work in IE
 				try {
@@ -1226,8 +1215,10 @@
 			 * .style(): add or get style
 			 * .opacity(): cross-browser way to set opacity
 			 */
-			getStyle: function(prop,type) { //Getting style
-				return getStyle(this[0],prop,type);
+			getStyle: function() { //Getting style
+				var len = arguments.length,
+					last = arguments[len - 1] === true;
+				return getStyle(this[0],mScript.slice(arguments,0,last ? len - 1 : len),last);
 			},
 			/* mScript .style()
 			 * Adds style to an element
@@ -1238,25 +1229,22 @@
 				var type = typeof style,
 					valType = typeof val,
 					len = this.length,
-					opacitySet,
-					i,name;
+					opacitySet,i,name;
 				if (type === "undefined" && valType === "undefined") return this.attr("style");
-				else if (type === "string" && !val) return getStyle(this[0],style,true); //Shortcut to access styles
-				else {
-					if (style && type === "object") { //If we are working with an object (a plain object) that states the properties
-						for (name in style) {
-							if (mScript.hasProp(style,name)) {
-								for (i = 0; i < len; i++) {
-									if (this[i].nodeType === 1) name === "opacity" && !opacitySet ? this.opacity(style[name]) && (opacitySet = true) : addStyle(this[i],name,typeof style[name] === "number" ? plainNumberCSS.test(name) ? style[name] + "" : style[name] + "px" : style[name]);
-								}
+				if ((type === "string" && !val) || mScript.isArray(style)) return getStyle(this[0],style,true); //Shortcut to access styles
+				if (style && type === "object") { //If we are working with an object (a plain object) that states the properties
+					for (name in style) {
+						if (mScript.hasProp(style,name)) {
+							for (i = 0; i < len; i++) {
+								if (this[i].nodeType === 1) name === "opacity" && !opacitySet ? this.opacity(style[name]) && (opacitySet = true) : addStyle(this[i],name,typeof style[name] === "number" ? plainNumberCSS.test(name) ? style[name] + "" : style[name] + "px" : style[name]);
 							}
 						}
-					} else if (type === "string" && valType === "string" || valType === "number") {
-						for (i = 0; i < len; i++) {
-							if (this[i].nodeType === 1) style.toLowerCase() === "opacity" ? this.opacity(val) : addStyle(this[i],style,valType === "number" ? plainNumberCSS.test(style) ? val + "" : val + "px" : val);
-						}
-					} else mScript.error(".style() was called with incorrect arguments."); //Other, throw a Error
-				}
+					}
+				} else if (type === "string" && valType === "string" || valType === "number") {
+					for (i = 0; i < len; i++) {
+						if (this[i].nodeType === 1) style.toLowerCase() === "opacity" ? this.opacity(val) : addStyle(this[i],style,valType === "number" ? plainNumberCSS.test(style) ? val + "" : val + "px" : val);
+					}
+				} else mScript.error(".style() was called with incorrect arguments."); //Other, throw a Error
 				return this; //Return mScript to enable chaining 
 			},
 			opacity: function(val) { //Setting opacity using style method
@@ -1268,7 +1256,7 @@
 						style;
 					for (; i < this.length; i++) { //Loop through all elements
 						if (this[i].nodeType === 1 && (style = this[i].style)) { //Don't let non-elements and XML elements
-							if (!bugs.css.opacity) style.opacity = val; //And set the style; for non-IE
+							if (!bugs.cssOpacity) style.opacity = val; //And set the style; for non-IE
 							else {
 								//Bug fixes from jQuery
 								//IE layout fix:
@@ -1284,7 +1272,7 @@
 					return this; //Return mScript to enable chaining
 				} else {
 					var opacity,match;
-					return !bugs.css.opacity ? this.getStyle("opacity",true) : (opacity = this.getStyle("filter")) && (match = opacity.match(filterOpacity)) ? parseFloat(opacity.match(match[1])) || match[1] : (opacity = this.getStyle("-ms-filter")) && (match = opacity.match(msFilterOpacity)) ? parseFloat(match[1]) || match[1] : 1; //If there is no value, we are getting a value; we can only return one value (without using an object) at a time
+					return !bugs.cssOpacity ? this.getStyle("opacity",true) : (opacity = this.getStyle("filter")) && (match = opacity.match(filterOpacity)) ? parseFloat(opacity.match(match[1])) || match[1] : (opacity = this.getStyle("-ms-filter")) && (match = opacity.match(msFilterOpacity)) ? parseFloat(match[1]) || match[1] : 1; //If there is no value, we are getting a value; we can only return one value (without using an object) at a time
 				}
 			},
 			/* Event-related methods:
@@ -1965,7 +1953,7 @@
 			slice: function(i,ii) {
 				return new $wrap(mScript.slice(this[0] && this[0].nodeType ? this : this[0] ? this[0] : [],i,ii));
 			},
-			get: function(a,b) {
+			get: function(i,ii) {
 				return typeof a !== "number" ? this.toArray() : mScript.slice(this[0] && this[0].nodeType ? this : this[0] ? this[0] : [],i,ii);
 			},
 			/* Internal usage only
@@ -2699,29 +2687,28 @@
 				return val || null;
 			},
 			getAttr = function(element,attr) { //Safe way to get an element property
-				attr = attr.toLowerCase(); //Case-insensitivity
+				attr = attr.toLowerCase();
 				if (!isXML(element)) { //HTML elements:
+					if (attr === "style") return element.style.cssText.toLowerCase();
 					if (element.getAttribute && attrNotProp) {
 						//For attribute fixes
 						attr = attrFix[attr] || attr;
 						//Second argument === case-insensitivity in IE
 						//We are returning the cssText without .getAttribute(), as that is the easiest way
-						return filterBool(attr === "style" ? element.style.cssText : element.getAttribute(attr,0),attr);
-					} else {
-						//For attribute problems
-						attr = attrFix[attr] || forAndClass[attr] || attr;
-						//Handle style differently
-						return filterBool(attr === "style" ? element.style.cssText : attr !== "value" && typeof element[attr] !== "undefined" ? element[attr] : getUnknownAttr(element,attr),attr);
+						return filterBool(element.getAttribute(attr,0),attr);
 					}
+					//For attribute problems
+					attr = attrFix[attr] || forAndClass[attr] || attr;
+					//Handle style differently
+					return filterBool(getUnknownAttr(element,attr),attr);
 				} else { //XML elements
 					var attrs = element.attributes,
-						currAttr,
 						i = 0,
 						len = attrs.length;
-					//We attributes them differently:
+					//We get attributes differently:
 					if (attrs) {
 						for (; i < len; i++) {
-							if ((currAttr = attrs[i]).nodeName.toLowerCase() === attr) return currAttr.nodeValue;
+							if (attrs[i].nodeName.toLowerCase() === attr) return attrs[i].nodeValue;
 						}
 					}
 					return null;
@@ -3797,11 +3784,11 @@
 			mstyle = margin.style;
 		body.insertBefore(div,body.firstChild);
 		style.width = "1%";
-		bugs.css.computedPercent = window.getComputedStyle && /%$/.test(window.getComputedStyle(div,null).width || "");
+		bugs.computedPercent = window.getComputedStyle && /%$/.test(window.getComputedStyle(div,null).width || "");
 		mstyle.width = mstyle.marginRight = "0px";
 		style.width = "1px";
 		div.appendChild(margin);
-		bugs.css.marginRightComputed = !!parseFloat((window.getComputedStyle(margin) || {}).marginRight);
+		bugs.marginRightComputed = !!parseFloat((window.getComputedStyle(margin) || {}).marginRight);
 		body.removeChild(div);
 		div = null; //Release memory
 	});
