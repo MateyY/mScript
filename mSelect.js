@@ -1,4 +1,4 @@
-/*! mSelect v.1.2.2
+/*! mSelect v.1.2.3
  * The mScript CSS Selector Engine
  * By Matey Yanakiev
  * Released under MIT License
@@ -184,29 +184,28 @@
 			return val || null;
 		},
 		getAttr = function(element,attr) { //Safe way to get an element property
-			attr = attr.toLowerCase(); //Case-insensitivity
+			attr = attr.toLowerCase();
 			if (!isXML(element)) { //HTML elements:
+				if (attr === "style") return element.style.cssText.toLowerCase();
 				if (element.getAttribute && attrNotProp) {
 					//For attribute fixes
 					attr = attrFix[attr] || attr;
 					//Second argument === case-insensitivity in IE
 					//We are returning the cssText without .getAttribute(), as that is the easiest way
-					return filterBool(attr === "style" ? element.style.cssText : element.getAttribute(attr,0),attr);
-				} else {
-					//For attribute problems
-					attr = attrFix[attr] || forAndClass[attr] || attr;
-					//Handle style differently
-					return filterBool(attr === "style" ? element.style.cssText : attr !== "value" && typeof element[attr] !== "undefined" ? element[attr] : getUnknownAttr(element,attr),attr);
+					return filterBool(element.getAttribute(attr,0),attr);
 				}
+				//For attribute problems
+				attr = attrFix[attr] || forAndClass[attr] || attr;
+				//Handle style differently
+				return filterBool(getUnknownAttr(element,attr),attr);
 			} else { //XML elements
 				var attrs = element.attributes,
-					currAttr,
 					i = 0,
 					len = attrs.length;
-				//We attributes them differently:
+				//We get attributes differently:
 				if (attrs) {
 					for (; i < len; i++) {
-						if ((currAttr = attrs[i]).nodeName.toLowerCase() === attr) return currAttr.nodeValue;
+						if (attrs[i].nodeName.toLowerCase() === attr) return attrs[i].nodeValue;
 					}
 				}
 				return null;
