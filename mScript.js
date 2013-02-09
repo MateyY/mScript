@@ -1,4 +1,4 @@
-/*! mScript v.1.2
+/*! mScript v.1.2.1
  * A JavaScript Library
  * By Matey Yanakiev
  * Released under MIT License
@@ -1614,6 +1614,8 @@
 			 * .prepend(): prepend an element inside another element (or text)
 			 * .appendTo(): append an element to another element
 			 * .prependTo(): prepend an element to another element
+			 * .appendHTML(): parses and appends HTML
+			 * .prependHTML(): parses and prepends HTML
 			 */
 			before: function(element) { //Insert an element before another element
 				insert("before",element,this);
@@ -1678,6 +1680,12 @@
 					for (; i < len; i++) parent.firstChild ? parent.insertBefore(this[i],parent.firstChild) : parent.appendChild(this[i]); //Append element
 				} else mScript.error(".prependTo() was not given a valid parent.");
 				return this; //Return mScript
+			},
+			appendHTML: function(html) {
+				return this.append(mScript.parseHTML(html));
+			},
+			prependHTML: function(html) {
+				return this.prepend(mScript.parseHTML(html));
 			},
 			children: function(deep) { //Get the children of an element
 				var arr = [], //A temporary array
