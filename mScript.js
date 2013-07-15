@@ -1,4 +1,4 @@
-/*! mScript v.1.2.1
+/*! mScript v.1.2.2
  * A JavaScript Library
  * By Matey Yanakiev
  * Released under MIT License
@@ -18,7 +18,7 @@
 		dateMonths = ["January","February","March","April","May","June","July","August","September","October","November","December"],
 		//Used to fetch current day:
 		dateDays = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"],
-		coreTrim = String.prototype.trim, //Core "".trim (if available)
+		coreTrim = String.prototype.trim, //Core String.prototype.trim (if available)
 		coreHasOwn = Object.prototype.hasOwnProperty, //.hasOwnProperty()
 		mScript = function(element,extra) {
 			var elements = [],
@@ -90,6 +90,7 @@
 		spaces = /\s/g, //Spaces (globally)
 		whitespace = /[\s\f\t\r\n\x20]/gm,
 		whitespacesrc = whitespace.source,
+		validCanvasContext = /(2|3)d/, //Test for a valid <canvas> context
 		//For .on() and .end()
 		eready = /ready/g,
 		removeready = new RegExp("(?:" + whitespacesrc + "|,)*ready,?","gm"),
@@ -1210,6 +1211,22 @@
 				}
 				return this; //Return mScript
 			},
+			canvas: function(context,yes,no) { //Draw on a canvas if there is support for it
+				if (typeof yes !== "function") {
+					mScript.error(".canvas() was not given a function in case of support.");
+				}
+				if (!validCanvasContext.test(context)) {
+					mScript.error(".canvas() was given an invalid context: please use \"2d\" or \"3d\".");
+				}
+				var elm = this[0], //Use this[0] as canvas
+					context = elm.getContext && elm.getContext(context);
+				if (mScript.canvasSupport && context) { //We want to have elm.getContext defined
+					yes(elm,context); //If context is defined, context becomes the second argument
+				} else if (typeof no === "function") {
+					no(elm);
+				}
+				return this; //Return mScript object
+			},
 			/* CSS (styling) methods
 			 * .getStyle(): get an element's style
 			 * .style(): add or get style
@@ -1805,7 +1822,7 @@
 			 * If it is false, the attribute is completely removed using .removeAttr() (defined above)
 			 */
 			attr: function(attribute,val) { //Get and/or set an attribute
-				var isXML,value,
+				var isXML,value,currVal,currValType,
 					type = typeof attribute,
 					i = 0,
 					len = this.length;
@@ -1829,9 +1846,9 @@
 								isXML = mScript.isXML(this[i]);
 								if (type === "object") {
 									for (value in attribute) { //For object: .attr({attr:val,attr2:val2...});
-										if (mScript.hasProp(attribute,value)) {
-											attribute[value] !== false && attribute[value] !== null //Are we removing or setting an attribute
-												? setAttr(this[i],value.toLowerCase(),typeof attribute[value] === "number" ? attribute[value] + "" : attribute[value] === true ? value : attribute[value],isXML) //Set value
+										if ((currValType = typeof (currVal = attribute[value])) !== "undefined" && mScript.hasProp(attribute,value)) {
+											currVal !== false && currVal !== null //Are we removing or setting an attribute
+												? setAttr(this[i],value.toLowerCase(),currValType === "number" ? currVal + "" : currVal === true ? value : currVal,isXML) //Set value
 												: removeAttr(this[i],value.toLowerCase(),isXML); //Remove attribute
 										}
 									}
@@ -3798,7 +3815,7 @@
 		div.appendChild(margin);
 		bugs.marginRightComputed = !!parseFloat((window.getComputedStyle(margin) || {}).marginRight);
 		body.removeChild(div);
-		div = null; //Release memory
+		div = margin = null; //Release memory (for IE)
 	});
 	/* Internet Explorer leaks
 	 * Solve these problems by emptying
